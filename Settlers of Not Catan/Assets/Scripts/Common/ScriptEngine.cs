@@ -147,8 +147,8 @@ public class ScriptEngine : MonoBehaviour {
                 break;
             case GameState.PHASE3:
                 phase3menu.SetActive(false);
-                BuildSettlementMenu.SetActive(false);
-                BuildRoadMenu.SetActive(false);
+                //BuildSettlementMenu.SetActive(false);
+                //BuildRoadMenu.SetActive(false);
                 Phase4();
                 break;
             case GameState.PHASE4:
