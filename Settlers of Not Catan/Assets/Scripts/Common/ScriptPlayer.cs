@@ -8,6 +8,10 @@ public class ScriptPlayer : MonoBehaviour {
 
     public List<GameObject> roads;
 
+    public bool EndTurn = false;
+
+    public bool NextPhase = false;
+
     public int NumLumber
     {
         get;
