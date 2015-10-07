@@ -12,5 +12,16 @@ public class ScriptPhaseTransition {
         currentPhase = thisPhase;
         command = thisCommand;
     }
+
+    public override int GetHashCode()
+    {
+        return 17 + 31 * currentPhase.GetHashCode() + 31 * command.GetHashCode();
+    }
+
+    public override bool Equals(object obj)
+    {
+        ScriptPhaseTransition other = obj as ScriptPhaseTransition;
+        return other != null && this.currentPhase == other.currentPhase && this.command == other.command;
+    }
     
 }
