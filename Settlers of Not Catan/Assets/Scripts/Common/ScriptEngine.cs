@@ -33,34 +33,27 @@ public enum StateCommands
 
 public class ScriptEngine : MonoBehaviour {
 
-    List<ScriptPlayer> players = new List<ScriptPlayer>();
+    //List<ScriptPlayer> players = new List<ScriptPlayer>();
 
+    ScriptPlayer player = new ScriptPlayer("Mike");
     Dictionary<ScriptPhaseTransition, GameState> allTransitions; //a dictionary of phase transitions
-
     Dictionary<string, StateCommands> enumParse;
-
     public GameState CurrentState { get; private set; } //the current state of the game
-
     public GameState PreviousState { get; private set; } //the previous state of the game
-
     public GameObject phase0menu; //the phase 0 menu
-
     public GameObject phase1menu; //the phase 1 menu
-
     public GameObject phase2menu; // the phase 2 menu
-
     public GameObject phase3menu; // the phase 3 menu
-
     public GameObject phase4menu; // the phase 4 menu
-
     public GameObject phase5menu; // the phase 5 menu
-
     public GameObject phase6menu; // the phase 6 menu
+    public GameObject BuildSettlementMenu; //build settlement button
+    public GameObject BuildRoadMenu; //build road button
 
 	// Use this for initialization
 	void Start () {
 
-        players.Add(new ScriptPlayer("Mike"));
+        //players.Add(new ScriptPlayer("Mike"));
 	    //setup the current state
         CurrentState = GameState.PHASE0;
 
@@ -154,6 +147,8 @@ public class ScriptEngine : MonoBehaviour {
                 break;
             case GameState.PHASE3:
                 phase3menu.SetActive(false);
+                BuildSettlementMenu.SetActive(false);
+                BuildRoadMenu.SetActive(false);
                 Phase4();
                 break;
             case GameState.PHASE4:
@@ -195,12 +190,25 @@ public class ScriptEngine : MonoBehaviour {
         //MoveNextAndTransition("goto phase 3");
     }
 
+    #region Phase3
     void Phase3()
     {
         Debug.Log("Entering Phase 3");
+        
+        if(player.NumBrick > 1 && player.NumLumber > 1 && player.NumWheat > 1 && player.NumWool > 1)
+        {
+            BuildSettlementMenu.SetActive(true);
+        }
+        if(player.NumBrick > 1 && player.NumLumber > 1)
+        {
+            BuildRoadMenu.SetActive(true);
+        }
 
         //MoveNextAndTransition("goto phase 4");
     }
+
+
+    #endregion
 
     void Phase4()
     {
@@ -213,9 +221,10 @@ public class ScriptEngine : MonoBehaviour {
     {
         Debug.Log("Entering Phase 5");
 
-        foreach(ScriptPlayer player in players)
-        {
-            if (player.NumSettlements > (players.Count * 1.25))
+        //foreach(ScriptPlayer player in players)
+        //{
+            //if (player.NumSettlements > (players.Count * 1.25))
+            if(player.NumSettlements > 1.25)
             {
                 MoveNextAndTransition("goto phase 6");
             }
@@ -223,7 +232,7 @@ public class ScriptEngine : MonoBehaviour {
             {
                 MoveNextAndTransition("goto phase 1");
             }
-        }
+        //}
     }
 
     void Phase6()
