@@ -7,7 +7,8 @@ public enum HexType
     WOOD = 1,
     GRAIN = 2,
     BRICK = 4,
-    WOOL = 8
+    WOOL = 8,
+    WATER = 16
 }
 public class ScriptHex
 {
