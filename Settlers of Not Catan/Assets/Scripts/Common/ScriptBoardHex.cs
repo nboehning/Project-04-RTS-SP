@@ -2,7 +2,18 @@
 using System.Collections;
 using System.Collections.Generic;
 
+/// <summary>
+/// @author Marshall Mason
+/// </summary>
 public class ScriptBoardHex : MonoBehaviour {
+
+    //Edge angle notes
+    //Z rotation
+
+    //-56.03992 /
+    //56.03992  \
+    //0   	  |
+
 
     public GameObject cornerPrefab;
     public GameObject edgePrefab;
