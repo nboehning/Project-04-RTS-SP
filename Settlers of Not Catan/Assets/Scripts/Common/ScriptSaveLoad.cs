@@ -28,10 +28,10 @@ public class ScriptSaveLoad : MonoBehaviour
         }
 
         //loop through players
-        foreach (ScriptPlayer player in engine.players)
-        {
+        //foreach (ScriptPlayer player in engine.players)
+        //{
 
-        }
+        //}
 
         ////loop through corners
         //foreach (ScriptBoardCorner corner in corners)

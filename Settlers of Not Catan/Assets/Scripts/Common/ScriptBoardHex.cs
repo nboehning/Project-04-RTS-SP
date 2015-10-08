@@ -23,10 +23,10 @@ public class ScriptBoardHex : MonoBehaviour {
     {
         foreach (ScriptBoardCorner corner in cornerScripts)
         {
-            if (corner.owner.PlayerName == engine.players[0].PlayerName)
-            {
-                //tell the settlement to add 1 of blah resources to owning player.
-            }
+            //if (corner.owner.PlayerName == engine.players[0].PlayerName)
+            //{
+            //    //tell the settlement to add 1 of blah resources to owning player.
+            //}
         }
     }
 
