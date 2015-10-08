@@ -4,21 +4,36 @@ using System.Collections;
 [System.Flags]
 public enum HexType
 {
-    WOOD = 1,
-    GRAIN = 2,
-    BRICK = 4,
-    WOOL = 8,
-    NONE = 16
+    WOOD,
+    GRAIN,
+    BRICK,
+    WOOL,
+    NONE
 }
+
+public enum HexNum
+{
+    ONE,
+    TWO,
+    THREE,
+    FOUR,
+    FIVE,
+    SIX,
+    NULL
+}
+
 public class ScriptHex
 {
     private HexType hexType;
+    private HexNum hexNum;
     private Vector2 hexCenter;
     private Vector2[] hexCorners = new Vector2[6];
 
     public ScriptHex(Vector2 center, float size)
     {
         hexType = HexType.NONE;
+        hexNum = HexNum.NULL;
+
         hexCenter = center;
         for (int i = 0; i < 6; i++)
         {
