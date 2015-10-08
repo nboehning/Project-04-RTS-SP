@@ -2,15 +2,21 @@
 using System.Collections;
 using System.Collections.Generic;
 
+/// <summary>
+/// @author Mike Dobson
+/// </summary>
+
 public class ScriptPlayer : MonoBehaviour {
 
     public List<GameObject> settlements;
-
     public List<GameObject> roads;
 
     public bool EndTurn = false;
+    
+    public void GainResources(int diceRoll)
+    {
 
-    public bool NextPhase = false;
+    }
 
     public int NumLumber
     {

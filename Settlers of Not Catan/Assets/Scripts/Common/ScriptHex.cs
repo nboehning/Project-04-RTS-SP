@@ -1,17 +1,33 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-[System.Flags]
 public enum HexType
 {
-    WOOD = 1,
-    GRAIN = 2,
-    BRICK = 4,
-    WOOL = 8,
-    WATER = 16
+    WOOD,
+    GRAIN,
+    BRICK,
+    WOOL,
+    NONE
 }
+
+
 public class ScriptHex
 {
+    public HexType hexType;
+    public Vector2 hexCenter;
+    public Vector2[] hexCorners = new Vector2[6];
+    public int hexNum;
+
+    public ScriptHex(Vector2 center, float size)
+    {
+        hexType = HexType.NONE;
+        hexNum = 0;
+        hexCenter = center;
+        for (int i = 0; i < 6; i++)
+        {
+            hexCorners[i] = GenerateHexPoint(hexCenter, size, i);
+        }
+    }
 
     public Vector2 GenerateHexPoint(Vector2 center, float size, int numCorner)
     {
@@ -23,7 +39,6 @@ public class ScriptHex
         returnPoint.y = center.y + size * Mathf.Sin(angleRadian);
 
         return returnPoint;
-        
-    }
 
+    }
 }
