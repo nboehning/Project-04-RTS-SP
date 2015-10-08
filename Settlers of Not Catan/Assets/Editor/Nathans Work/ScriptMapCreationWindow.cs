@@ -51,5 +51,7 @@ public class ScriptMapCreationWindow : EditorWindow
 
         EditorGUILayout.EndVertical();
         #endregion
+
+        EditorGUILayout.EndHorizontal();
     }
 }
