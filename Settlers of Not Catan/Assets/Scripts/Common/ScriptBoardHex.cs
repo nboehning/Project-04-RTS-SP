@@ -41,6 +41,34 @@ public class ScriptBoardHex : MonoBehaviour {
         }
     }
 
+    public void CheckAndGenerateEdges()
+    {
+        Vector3 center = transform.position;
+        for (int i = 0; i < 6; i++)
+        {
+            //@ref Nathan
+            float angle = Mathf.PI * (60f * i + 30) / 180;
+            Vector3 cornerPos = new Vector3((center.x + hexSideLength * Mathf.Cos(angle)),
+                                    (center.y + hexSideLength * Mathf.Sin(angle)), (center.z - .5f));
+            //@endRef Nathan
+
+
+            Collider[] hitColliders = Physics.OverlapSphere(cornerPos, .125f);
+            bool edgeFound = false;
+            foreach (Collider other in hitColliders)
+            {
+                if (other.tag == "Road")
+                {
+                    edgeFound = true;
+                }
+            }
+            if (!edgeFound)
+            {
+                GameObject temp = (GameObject)Instantiate(edgePrefab, cornerPos, Quaternion.identity);
+            }
+        }
+    }
+    
     public void CheckAndGenerateCorners()
     {
         Vector3 center = transform.position;
