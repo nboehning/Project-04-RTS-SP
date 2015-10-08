@@ -245,12 +245,22 @@ public class ScriptEngine : MonoBehaviour {
         }
     }
 
+    public void BuySettlement()
+    {
+
+    }
+
     void DisplayRoadButton()
     {
         if(players[0].NumBrick >= 1 && players [0].NumLumber >= 1)
         {
             BuildRoadMenu.SetActive(true);
         }
+    }
+
+    public void BuyRoad()
+    {
+
     }
 
     public void NextPhase()
