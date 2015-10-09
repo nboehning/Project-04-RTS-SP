@@ -30,6 +30,13 @@ public class ScriptSaveLoad : MonoBehaviour
                 //export type and value
             }
 
+<<<<<<< HEAD
+        //loop through players
+        //foreach (ScriptPlayer player in engine.players)
+        //{
+
+        //}
+=======
             //loop through players
             writer.WriteLine(engine.players.Count);
             foreach (ScriptPlayer player in engine.players)
@@ -55,6 +62,7 @@ public class ScriptSaveLoad : MonoBehaviour
                                     + "," + road.transform.position.y
                                     + "," + road.transform.position.z);
                 }
+>>>>>>> mdobson2/master
 
             }
 

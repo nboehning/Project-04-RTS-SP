@@ -20,7 +20,7 @@ public class ScriptBoardHex : MonoBehaviour {
     public ScriptEngine engine;
     public float hexSideLength;
     public int hexDieValue;
-    public HexType resource;
+    //public HexType resource;
 
     List<ScriptBoardCorner> cornerScripts = new List<ScriptBoardCorner>(0);    
     
@@ -34,10 +34,10 @@ public class ScriptBoardHex : MonoBehaviour {
     {
         foreach (ScriptBoardCorner corner in cornerScripts)
         {
-            if (corner.owner.PlayerName == engine.players[0].PlayerName)
-            {
-                //tell the settlement to add 1 of blah resources to owning player.
-            }
+            //if (corner.owner.PlayerName == engine.players[0].PlayerName)
+            //{
+            //    //tell the settlement to add 1 of blah resources to owning player.
+            //}
         }
     }
 
