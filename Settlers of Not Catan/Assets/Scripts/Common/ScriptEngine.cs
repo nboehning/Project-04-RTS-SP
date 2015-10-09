@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 /// <summary>
 /// @author Mike Dobson
@@ -11,47 +12,30 @@ using System.Collections.Generic;
 
 public enum GameState
 {
-	PHASE0,
-	PHASE1,
-	PHASE2,
-	PHASE3,
-	PHASE4,
-	PHASE5,
-	PHASE6
+    PHASE0,
+    PHASE1,
+    PHASE2,
+    PHASE3,
+    PHASE4,
+    PHASE5,
+    PHASE6
 }
 
 public enum StateCommands
 {
-	GOTO_PHASE0,
-	GOTO_PHASE1,
-	GOTO_PHASE2,
-	GOTO_PHASE3,
-	GOTO_PHASE4,
-	GOTO_PHASE5,
-	GOTO_PHASE6
+    GOTO_PHASE0,
+    GOTO_PHASE1,
+    GOTO_PHASE2,
+    GOTO_PHASE3,
+    GOTO_PHASE4,
+    GOTO_PHASE5,
+    GOTO_PHASE6,
+    QUIT_APPLICATION
 }
 
-public class ScriptEngine : MonoBehaviour {
-<<<<<<< HEAD
+public class ScriptEngine : MonoBehaviour
+{
 
-	//List<ScriptPlayer> players = new List<ScriptPlayer>();
-
-	ScriptPlayer player = new ScriptPlayer("Mike");
-	Dictionary<ScriptPhaseTransition, GameState> allTransitions; //a dictionary of phase transitions
-	Dictionary<string, StateCommands> enumParse;
-	public GameState CurrentState { get; private set; } //the current state of the game
-	public GameState PreviousState { get; private set; } //the previous state of the game
-	public GameObject phase0menu; //the phase 0 menu
-	public GameObject phase1menu; //the phase 1 menu
-	public GameObject phase2menu; // the phase 2 menu
-	public GameObject phase3menu; // the phase 3 menu
-	public GameObject phase4menu; // the phase 4 menu
-	public GameObject phase5menu; // the phase 5 menu
-	public GameObject phase6menu; // the phase 6 menu
-	public GameObject BuildSettlementMenu; //build settlement button
-	public GameObject BuildRoadMenu; //build road button
-=======
-   
     public List<ScriptPlayer> players = new List<ScriptPlayer>();
 
     //ScriptPlayer player = new ScriptPlayer("Mike");
@@ -93,201 +77,53 @@ public class ScriptEngine : MonoBehaviour {
     public Text WinnerText; // winner text for phase 6
     int winningPlayerNumber = -1;
     #endregion
->>>>>>> mdobson2/master
 
-	// Use this for initialization
-	void Start () {
+    // Use this for initialization
+    void Start()
+    {
 
-		//players.Add(new ScriptPlayer("Mike"));
-		//setup the current state
-		CurrentState = GameState.PHASE0;
+        players.Add(new ScriptPlayer("Mike"));
+        //setup the current state
+        CurrentState = GameState.PHASE0;
 
-		//setup the previous state
-		PreviousState = GameState.PHASE0;
+        //setup the previous state
+        PreviousState = GameState.PHASE0;
 
-		//create the dictionary
-		allTransitions = new Dictionary<ScriptPhaseTransition, GameState>
-		{
-			//Defines the state transitions where
-			//{new ScriptPhaseTransition(actual state of the machine, transition state/command), final state of the machine)}
-			{new ScriptPhaseTransition(GameState.PHASE0, StateCommands.GOTO_PHASE5), GameState.PHASE5 },
-			{new ScriptPhaseTransition(GameState.PHASE1, StateCommands.GOTO_PHASE2), GameState.PHASE2 },
-			{new ScriptPhaseTransition(GameState.PHASE2, StateCommands.GOTO_PHASE3), GameState.PHASE3 },
-			{new ScriptPhaseTransition(GameState.PHASE3, StateCommands.GOTO_PHASE4), GameState.PHASE4 },
-			{new ScriptPhaseTransition(GameState.PHASE4, StateCommands.GOTO_PHASE5), GameState.PHASE5 },
-			{new ScriptPhaseTransition(GameState.PHASE5, StateCommands.GOTO_PHASE1), GameState.PHASE1 },
-			{new ScriptPhaseTransition(GameState.PHASE5, StateCommands.GOTO_PHASE6), GameState.PHASE6 }
-		};
+        //create the dictionary
+        allTransitions = new Dictionary<ScriptPhaseTransition, GameState>
+        {
+            //Defines the state transitions where
+            //{new ScriptPhaseTransition(actual state of the machine, transition state/command), final state of the machine)}
+            {new ScriptPhaseTransition(GameState.PHASE0, StateCommands.GOTO_PHASE5), GameState.PHASE5 },
+            {new ScriptPhaseTransition(GameState.PHASE1, StateCommands.GOTO_PHASE2), GameState.PHASE2 },
+            {new ScriptPhaseTransition(GameState.PHASE2, StateCommands.GOTO_PHASE3), GameState.PHASE3 },
+            {new ScriptPhaseTransition(GameState.PHASE3, StateCommands.GOTO_PHASE4), GameState.PHASE4 },
+            {new ScriptPhaseTransition(GameState.PHASE4, StateCommands.GOTO_PHASE2), GameState.PHASE2 },
+            {new ScriptPhaseTransition(GameState.PHASE4, StateCommands.GOTO_PHASE3), GameState.PHASE3 },
+            {new ScriptPhaseTransition(GameState.PHASE4, StateCommands.GOTO_PHASE5), GameState.PHASE5 },
+            {new ScriptPhaseTransition(GameState.PHASE5, StateCommands.GOTO_PHASE1), GameState.PHASE1 },
+            {new ScriptPhaseTransition(GameState.PHASE5, StateCommands.GOTO_PHASE6), GameState.PHASE6 }
+        };
 
-		//Create the dictionary where
-		//{string that is passed by the button, command the string represents
-		enumParse = new Dictionary<string, StateCommands>
-		{
-			{"goto phase 0", StateCommands.GOTO_PHASE0},
-			{"goto phase 1", StateCommands.GOTO_PHASE1},
-			{"goto phase 2", StateCommands.GOTO_PHASE2},
-			{"goto phase 3", StateCommands.GOTO_PHASE3},
-			{"goto phase 4", StateCommands.GOTO_PHASE4},
-			{"goto phase 5", StateCommands.GOTO_PHASE5},
-			{"goto phase 6", StateCommands.GOTO_PHASE6}
-		};
+        //Create the dictionary where
+        //{string that is passed by the button, command the string represents
+        enumParse = new Dictionary<string, StateCommands>
+        {
+            {"goto phase 0", StateCommands.GOTO_PHASE0},
+            {"goto phase 1", StateCommands.GOTO_PHASE1},
+            {"goto phase 2", StateCommands.GOTO_PHASE2},
+            {"goto phase 3", StateCommands.GOTO_PHASE3},
+            {"goto phase 4", StateCommands.GOTO_PHASE4},
+            {"goto phase 5", StateCommands.GOTO_PHASE5},
+            {"goto phase 6", StateCommands.GOTO_PHASE6},
+            {"quit application", StateCommands.QUIT_APPLICATION}
+        };
 
-		Debug.Log("Current state: " + CurrentState);
-		Phase0();
-	}
-	
-	GameState GetNext(StateCommands command)
-<<<<<<< HEAD
-	{
-		//construct transition based on machine current state and the command
-		ScriptPhaseTransition newTransition = new ScriptPhaseTransition(CurrentState, command);
+        Debug.Log("Current state: " + CurrentState);
+        Phase0();
+    }
 
-		//store the location to got to here
-		GameState newState;
-
-		if(!allTransitions.TryGetValue(newTransition, out newState))
-			throw new UnityException("Invalid Game State transition " + CurrentState + " -> " + command);
-
-		//return the new state
-		return newState;
-	}
-
-	public void MoveNextAndTransition(string command)
-	{
-		//record the previous state of the machine
-		PreviousState = CurrentState;
-
-		//location for the new command
-		StateCommands newCommand;
-
-		//try to get the value of the command
-		if (!enumParse.TryGetValue(command, out newCommand))
-			throw new UnityException("Invalid command  -> " + command);
-
-		//setup the new state
-		CurrentState = GetNext(newCommand);
-
-		//transition the game to the next state
-		Transition();
-
-		Debug.Log("Transitioning from " + PreviousState + " -> " + CurrentState);
-	}
-
-	void Transition()
-	{
-		switch(PreviousState)
-		{
-			case GameState.PHASE0:
-				phase0menu.SetActive(false);
-				Phase5();
-				break;
-			case GameState.PHASE1:
-				phase1menu.SetActive(false);
-				phase2menu.SetActive(true);
-				Phase2();
-				break;
-			case GameState.PHASE2:
-				phase2menu.SetActive(false);
-				phase3menu.SetActive(true);
-				Phase3();
-				break;
-			case GameState.PHASE3:
-				phase3menu.SetActive(false);
-				//BuildSettlementMenu.SetActive(false);
-				//BuildRoadMenu.SetActive(false);
-				Phase4();
-				break;
-			case GameState.PHASE4:
-				Phase5();
-				break;
-			case GameState.PHASE5:
-				if(CurrentState == GameState.PHASE1)
-				{
-					phase1menu.SetActive(true);
-					Phase1();
-				}
-				else
-				{
-					Phase6();
-				}
-				break;
-		}
-	}
-
-	void Phase0()
-	{
-		Debug.Log("Entering Phase 0");
-		//MoveNextAndTransition("goto phase 5");
-	}
-
-	void Phase1()
-	{
-		Debug.Log("Entering Phase 1");
-
-		int diceRoll = Random.Range(1, 6);
-		Debug.Log("Dice Roll " + diceRoll);
-		//MoveNextAndTransition("goto phase 2");
-	}
-
-	void Phase2()
-	{
-		Debug.Log("Entering Phase 2");
-
-		//MoveNextAndTransition("goto phase 3");
-	}
-
-	#region Phase3
-	void Phase3()
-	{
-		Debug.Log("Entering Phase 3");
-		
-		if(player.NumBrick > 1 && player.NumLumber > 1 && player.NumWheat > 1 && player.NumWool > 1)
-		{
-			BuildSettlementMenu.SetActive(true);
-		}
-		if(player.NumBrick > 1 && player.NumLumber > 1)
-		{
-			BuildRoadMenu.SetActive(true);
-		}
-
-		//MoveNextAndTransition("goto phase 4");
-	}
-
-
-	#endregion
-
-	void Phase4()
-	{
-		Debug.Log("Entering Phase 4");
-
-		MoveNextAndTransition("goto phase 5");
-	}
-
-	void Phase5()
-	{
-		Debug.Log("Entering Phase 5");
-
-		//foreach(ScriptPlayer player in players)
-		//{
-			//if (player.NumSettlements > (players.Count * 1.25))
-			if(player.NumSettlements > 1.25)
-			{
-				MoveNextAndTransition("goto phase 6");
-			}
-			else
-			{
-				MoveNextAndTransition("goto phase 1");
-			}
-		//}
-	}
-
-	void Phase6()
-	{
-		Debug.Log("Entering Phase 6");
-
-		Application.Quit();
-	}
-=======
+    GameState GetNext(StateCommands command)
     {
         //construct transition based on machine current state and the command
         ScriptPhaseTransition newTransition = new ScriptPhaseTransition(CurrentState, command);
@@ -295,7 +131,7 @@ public class ScriptEngine : MonoBehaviour {
         //store the location to got to here
         GameState newState;
 
-        if(!allTransitions.TryGetValue(newTransition, out newState))
+        if (!allTransitions.TryGetValue(newTransition, out newState))
             throw new UnityException("Invalid Game State transition " + CurrentState + " -> " + command);
 
         //return the new state
@@ -325,7 +161,7 @@ public class ScriptEngine : MonoBehaviour {
 
     void Transition()
     {
-        switch(PreviousState)
+        switch (PreviousState)
         {
             case GameState.PHASE0:
                 phase0menu.SetActive(false);
@@ -354,7 +190,7 @@ public class ScriptEngine : MonoBehaviour {
                 Phase5();
                 break;
             case GameState.PHASE5:
-                if(CurrentState == GameState.PHASE1)
+                if (CurrentState == GameState.PHASE1)
                 {
                     phase1menu.SetActive(true);
                     Phase1();
@@ -376,7 +212,7 @@ public class ScriptEngine : MonoBehaviour {
         StartCoroutine("GetRoad");
 
         phase0button.SetActive(true);
-        
+
         //MoveNextAndTransition("goto phase 5");
     }
 
@@ -456,7 +292,7 @@ public class ScriptEngine : MonoBehaviour {
 
     void DisplaySettlementButton()
     {
-        if(players[0].NumBrick >= 1 && players[0].NumLumber >= 1 && players[0].NumWheat >= 1 && players[0].NumWool >= 1)
+        if (players[0].NumBrick >= 1 && players[0].NumLumber >= 1 && players[0].NumWheat >= 1 && players[0].NumWool >= 1)
         {
             BuildSettlementMenu.SetActive(true);
         }
@@ -464,17 +300,17 @@ public class ScriptEngine : MonoBehaviour {
 
     public void BuySettlement()
     {
-        while(true)
+        while (true)
         {
-            if(Input.GetMouseButtonDown(0))
+            if (Input.GetMouseButtonDown(0))
             {
                 Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
                 RaycastHit hit;
-                if(Physics.Raycast(ray, out hit))
+                if (Physics.Raycast(ray, out hit))
                 {
-                    if(hit.transform.tag == "Settlement")
+                    if (hit.transform.tag == "Settlement")
                     {
-                        if(hit.transform.GetComponent<ScriptBoardCorner>().CheckValidBuild())
+                        if (hit.transform.GetComponent<ScriptBoardCorner>().CheckValidBuild())
                         {
                             Debug.Log("Valid Settlement Placement");
                             players[0].RemoveBricks(1);
@@ -500,7 +336,7 @@ public class ScriptEngine : MonoBehaviour {
 
     void DisplayRoadButton()
     {
-        if(players[0].NumBrick >= 1 && players [0].NumLumber >= 1)
+        if (players[0].NumBrick >= 1 && players[0].NumLumber >= 1)
         {
             BuildRoadMenu.SetActive(true);
         }
@@ -570,7 +406,7 @@ public class ScriptEngine : MonoBehaviour {
                     endTurn = false;
                 }
             }
-            if(endTurn)
+            if (endTurn)
             {
                 break;
             }
@@ -585,10 +421,10 @@ public class ScriptEngine : MonoBehaviour {
             }
 
             MoveNextAndTransition("goto phase 5");
-            yield break;  
+            yield break;
         }
         yield return null;
-        
+
     }
 
     public void ReturnToTrade()
@@ -625,7 +461,7 @@ public class ScriptEngine : MonoBehaviour {
         Debug.Log("Checking for winner");
 
         Debug.Log("Start Processing");
-        for(int i = 0; i < players.Count; i++)
+        for (int i = 0; i < players.Count; i++)
         {
             if (players[i].NumSettlements > 1.25 * players.Count)
             {
@@ -633,7 +469,7 @@ public class ScriptEngine : MonoBehaviour {
             }
         }
 
-        if(winningPlayerNumber != -1)
+        if (winningPlayerNumber != -1)
         {
             Debug.Log("End Processing");
             Debug.Log("Winner found");
@@ -660,5 +496,670 @@ public class ScriptEngine : MonoBehaviour {
         Application.Quit();
     }
     #endregion
->>>>>>> mdobson2/master
 }
+
+
+//using UnityEngine;
+//using System.Collections;
+//using System.Collections.Generic;
+
+///// <summary>
+///// @author Mike Dobson
+///// This is the basic state machine for the Settlers of not catan game for project 4, 
+///// this machine will transfer the game from one phase to the next and run the content 
+///// for each of the phases.
+///// </summary>
+
+//public enum GameState
+//{
+//    PHASE0,
+//    PHASE1,
+//    PHASE2,
+//    PHASE3,
+//    PHASE4,
+//    PHASE5,
+//    PHASE6
+//}
+
+//public enum StateCommands
+//{
+//    GOTO_PHASE0,
+//    GOTO_PHASE1,
+//    GOTO_PHASE2,
+//    GOTO_PHASE3,
+//    GOTO_PHASE4,
+//    GOTO_PHASE5,
+//    GOTO_PHASE6
+//}
+
+//public class ScriptEngine : MonoBehaviour {
+//<<<<<<< HEAD
+
+//    //List<ScriptPlayer> players = new List<ScriptPlayer>();
+
+//    ScriptPlayer player = new ScriptPlayer("Mike");
+//    Dictionary<ScriptPhaseTransition, GameState> allTransitions; //a dictionary of phase transitions
+//    Dictionary<string, StateCommands> enumParse;
+//    public GameState CurrentState { get; private set; } //the current state of the game
+//    public GameState PreviousState { get; private set; } //the previous state of the game
+//    public GameObject phase0menu; //the phase 0 menu
+//    public GameObject phase1menu; //the phase 1 menu
+//    public GameObject phase2menu; // the phase 2 menu
+//    public GameObject phase3menu; // the phase 3 menu
+//    public GameObject phase4menu; // the phase 4 menu
+//    public GameObject phase5menu; // the phase 5 menu
+//    public GameObject phase6menu; // the phase 6 menu
+//    public GameObject BuildSettlementMenu; //build settlement button
+//    public GameObject BuildRoadMenu; //build road button
+//=======
+   
+//    public List<ScriptPlayer> players = new List<ScriptPlayer>();
+
+//    //ScriptPlayer player = new ScriptPlayer("Mike");
+//    Dictionary<ScriptPhaseTransition, GameState> allTransitions; //a dictionary of phase transitions
+//    Dictionary<string, StateCommands> enumParse;
+//    //public List<ScriptBoardHex> Hexes;
+//    public GameState CurrentState { get; private set; } //the current state of the game
+//    public GameState PreviousState { get; private set; } //the previous state of the game
+
+//    #region Phase 0 variables
+//    public GameObject phase0menu; //the phase 0 menu
+//    public GameObject phase0button;
+//    #endregion
+
+//    #region Phase 1 variables
+//    public GameObject phase1menu; //the phase 1 menu
+//    #endregion
+
+//    #region Phase 2 variables
+//    public GameObject phase2menu; // the phase 2 menu
+//    #endregion
+
+//    #region Phase 3 variables
+//    public GameObject phase3menu; // the phase 3 menu
+//    public GameObject BuildSettlementMenu; //build settlement button
+//    public GameObject BuildRoadMenu; //build road button
+//    #endregion
+
+//    #region Phase 4 variables
+//    public GameObject phase4menu; // the phase 4 menu
+//    #endregion
+
+//    #region Phase 5 variables
+//    public GameObject phase5menu; // the phase 5 menu
+//    #endregion
+
+//    #region Phase 6 variables
+//    public GameObject phase6menu; // the phase 6 menu
+//    public Text WinnerText; // winner text for phase 6
+//    int winningPlayerNumber = -1;
+//    #endregion
+//>>>>>>> mdobson2/master
+
+//    // Use this for initialization
+//    void Start () {
+
+//        //players.Add(new ScriptPlayer("Mike"));
+//        //setup the current state
+//        CurrentState = GameState.PHASE0;
+
+//        //setup the previous state
+//        PreviousState = GameState.PHASE0;
+
+//        //create the dictionary
+//        allTransitions = new Dictionary<ScriptPhaseTransition, GameState>
+//        {
+//            //Defines the state transitions where
+//            //{new ScriptPhaseTransition(actual state of the machine, transition state/command), final state of the machine)}
+//            {new ScriptPhaseTransition(GameState.PHASE0, StateCommands.GOTO_PHASE5), GameState.PHASE5 },
+//            {new ScriptPhaseTransition(GameState.PHASE1, StateCommands.GOTO_PHASE2), GameState.PHASE2 },
+//            {new ScriptPhaseTransition(GameState.PHASE2, StateCommands.GOTO_PHASE3), GameState.PHASE3 },
+//            {new ScriptPhaseTransition(GameState.PHASE3, StateCommands.GOTO_PHASE4), GameState.PHASE4 },
+//            {new ScriptPhaseTransition(GameState.PHASE4, StateCommands.GOTO_PHASE5), GameState.PHASE5 },
+//            {new ScriptPhaseTransition(GameState.PHASE5, StateCommands.GOTO_PHASE1), GameState.PHASE1 },
+//            {new ScriptPhaseTransition(GameState.PHASE5, StateCommands.GOTO_PHASE6), GameState.PHASE6 }
+//        };
+
+//        //Create the dictionary where
+//        //{string that is passed by the button, command the string represents
+//        enumParse = new Dictionary<string, StateCommands>
+//        {
+//            {"goto phase 0", StateCommands.GOTO_PHASE0},
+//            {"goto phase 1", StateCommands.GOTO_PHASE1},
+//            {"goto phase 2", StateCommands.GOTO_PHASE2},
+//            {"goto phase 3", StateCommands.GOTO_PHASE3},
+//            {"goto phase 4", StateCommands.GOTO_PHASE4},
+//            {"goto phase 5", StateCommands.GOTO_PHASE5},
+//            {"goto phase 6", StateCommands.GOTO_PHASE6}
+//        };
+
+//        Debug.Log("Current state: " + CurrentState);
+//        Phase0();
+//    }
+	
+//    GameState GetNext(StateCommands command)
+//<<<<<<< HEAD
+//    {
+//        //construct transition based on machine current state and the command
+//        ScriptPhaseTransition newTransition = new ScriptPhaseTransition(CurrentState, command);
+
+//        //store the location to got to here
+//        GameState newState;
+
+//        if(!allTransitions.TryGetValue(newTransition, out newState))
+//            throw new UnityException("Invalid Game State transition " + CurrentState + " -> " + command);
+
+//        //return the new state
+//        return newState;
+//    }
+
+//    public void MoveNextAndTransition(string command)
+//    {
+//        //record the previous state of the machine
+//        PreviousState = CurrentState;
+
+//        //location for the new command
+//        StateCommands newCommand;
+
+//        //try to get the value of the command
+//        if (!enumParse.TryGetValue(command, out newCommand))
+//            throw new UnityException("Invalid command  -> " + command);
+
+//        //setup the new state
+//        CurrentState = GetNext(newCommand);
+
+//        //transition the game to the next state
+//        Transition();
+
+//        Debug.Log("Transitioning from " + PreviousState + " -> " + CurrentState);
+//    }
+
+//    void Transition()
+//    {
+//        switch(PreviousState)
+//        {
+//            case GameState.PHASE0:
+//                phase0menu.SetActive(false);
+//                Phase5();
+//                break;
+//            case GameState.PHASE1:
+//                phase1menu.SetActive(false);
+//                phase2menu.SetActive(true);
+//                Phase2();
+//                break;
+//            case GameState.PHASE2:
+//                phase2menu.SetActive(false);
+//                phase3menu.SetActive(true);
+//                Phase3();
+//                break;
+//            case GameState.PHASE3:
+//                phase3menu.SetActive(false);
+//                //BuildSettlementMenu.SetActive(false);
+//                //BuildRoadMenu.SetActive(false);
+//                Phase4();
+//                break;
+//            case GameState.PHASE4:
+//                Phase5();
+//                break;
+//            case GameState.PHASE5:
+//                if(CurrentState == GameState.PHASE1)
+//                {
+//                    phase1menu.SetActive(true);
+//                    Phase1();
+//                }
+//                else
+//                {
+//                    Phase6();
+//                }
+//                break;
+//        }
+//    }
+
+//    void Phase0()
+//    {
+//        Debug.Log("Entering Phase 0");
+//        //MoveNextAndTransition("goto phase 5");
+//    }
+
+//    void Phase1()
+//    {
+//        Debug.Log("Entering Phase 1");
+
+//        int diceRoll = Random.Range(1, 6);
+//        Debug.Log("Dice Roll " + diceRoll);
+//        //MoveNextAndTransition("goto phase 2");
+//    }
+
+//    void Phase2()
+//    {
+//        Debug.Log("Entering Phase 2");
+
+//        //MoveNextAndTransition("goto phase 3");
+//    }
+
+//    #region Phase3
+//    void Phase3()
+//    {
+//        Debug.Log("Entering Phase 3");
+		
+//        if(player.NumBrick > 1 && player.NumLumber > 1 && player.NumWheat > 1 && player.NumWool > 1)
+//        {
+//            BuildSettlementMenu.SetActive(true);
+//        }
+//        if(player.NumBrick > 1 && player.NumLumber > 1)
+//        {
+//            BuildRoadMenu.SetActive(true);
+//        }
+
+//        //MoveNextAndTransition("goto phase 4");
+//    }
+
+
+//    #endregion
+
+//    void Phase4()
+//    {
+//        Debug.Log("Entering Phase 4");
+
+//        MoveNextAndTransition("goto phase 5");
+//    }
+
+//    void Phase5()
+//    {
+//        Debug.Log("Entering Phase 5");
+
+//        //foreach(ScriptPlayer player in players)
+//        //{
+//            //if (player.NumSettlements > (players.Count * 1.25))
+//            if(player.NumSettlements > 1.25)
+//            {
+//                MoveNextAndTransition("goto phase 6");
+//            }
+//            else
+//            {
+//                MoveNextAndTransition("goto phase 1");
+//            }
+//        //}
+//    }
+
+//    void Phase6()
+//    {
+//        Debug.Log("Entering Phase 6");
+
+//        Application.Quit();
+//    }
+//=======
+//    {
+//        //construct transition based on machine current state and the command
+//        ScriptPhaseTransition newTransition = new ScriptPhaseTransition(CurrentState, command);
+
+//        //store the location to got to here
+//        GameState newState;
+
+//        if(!allTransitions.TryGetValue(newTransition, out newState))
+//            throw new UnityException("Invalid Game State transition " + CurrentState + " -> " + command);
+
+//        //return the new state
+//        return newState;
+//    }
+
+//    public void MoveNextAndTransition(string command)
+//    {
+//        //record the previous state of the machine
+//        PreviousState = CurrentState;
+
+//        //location for the new command
+//        StateCommands newCommand;
+
+//        //try to get the value of the command
+//        if (!enumParse.TryGetValue(command, out newCommand))
+//            throw new UnityException("Invalid command  -> " + command);
+
+//        //setup the new state
+//        CurrentState = GetNext(newCommand);
+
+//        Debug.Log("Transitioning from " + PreviousState + " -> " + CurrentState);
+//        //transition the game to the next state
+//        Transition();
+
+//    }
+
+//    void Transition()
+//    {
+//        switch(PreviousState)
+//        {
+//            case GameState.PHASE0:
+//                phase0menu.SetActive(false);
+//                phase1menu.SetActive(true);
+//                Phase5();
+//                break;
+//            case GameState.PHASE1:
+//                phase1menu.SetActive(false);
+//                phase2menu.SetActive(true);
+//                Phase2();
+//                break;
+//            case GameState.PHASE2:
+//                phase2menu.SetActive(false);
+//                phase3menu.SetActive(true);
+//                Phase3();
+//                break;
+//            case GameState.PHASE3:
+//                phase3menu.SetActive(false);
+//                BuildRoadMenu.SetActive(false);
+//                BuildSettlementMenu.SetActive(false);
+//                phase4menu.SetActive(true);
+//                Phase4();
+//                break;
+//            case GameState.PHASE4:
+//                phase4menu.SetActive(false);
+//                Phase5();
+//                break;
+//            case GameState.PHASE5:
+//                if(CurrentState == GameState.PHASE1)
+//                {
+//                    phase1menu.SetActive(true);
+//                    Phase1();
+//                }
+//                else
+//                {
+//                    Phase6(winningPlayerNumber);
+//                }
+//                break;
+//        }
+//    }
+
+//    #region Phase 0
+//    void Phase0()
+//    {
+//        Debug.Log("Entering Phase 0");
+
+//        StartCoroutine("GetSettlement");
+//        StartCoroutine("GetRoad");
+
+//        phase0button.SetActive(true);
+        
+//        //MoveNextAndTransition("goto phase 5");
+//    }
+
+//    IEnumerator GetSettlement()
+//    {
+//        while (true)
+//        {
+//            if (Input.GetMouseButtonDown(0))
+//            {
+//                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+//                RaycastHit hit;
+//                if (Physics.Raycast(ray, out hit))
+//                {
+//                    if (hit.transform.tag == "Settlement")
+//                    {
+//                        hit.transform.GetComponent<ScriptBoardCorner>().owner = players[0];
+//                        break;
+//                    }
+//                }
+//            }
+//            yield return null;
+//        }
+//    }
+
+//    IEnumerator GetRoad()
+//    {
+//        while (true)
+//        {
+//            if (Input.GetMouseButtonDown(0))
+//            {
+//                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+//                RaycastHit hit;
+//                if (Physics.Raycast(ray, out hit))
+//                {
+//                    if (hit.transform.tag == "Road")
+//                    {
+//                        if (hit.transform.GetComponent<ScriptBoardEdge>().CheckStartRoad())
+//                        {
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
+//            yield return null;
+//        }
+//    }
+//    #endregion
+
+//    #region Phase 1
+//    void Phase1()
+//    {
+//        Debug.Log("Entering Phase 1");
+
+//        int diceRoll = Random.Range(1, 6);
+//        Debug.Log("Dice Roll " + diceRoll);
+//        //MoveNextAndTransition("goto phase 2");
+//    }
+//    #endregion
+
+//    #region Phase 2
+//    void Phase2()
+//    {
+//        Debug.Log("Entering Phase 2");
+
+//        //MoveNextAndTransition("goto phase 3");
+//    }
+//    #endregion
+
+//    #region Phase 3
+//    void Phase3()
+//    {
+//        Debug.Log("Entering Phase 3");
+
+//        DisplayRoadButton();
+//        DisplaySettlementButton();
+//    }
+
+//    void DisplaySettlementButton()
+//    {
+//        if(players[0].NumBrick >= 1 && players[0].NumLumber >= 1 && players[0].NumWheat >= 1 && players[0].NumWool >= 1)
+//        {
+//            BuildSettlementMenu.SetActive(true);
+//        }
+//    }
+
+//    public void BuySettlement()
+//    {
+//        while(true)
+//        {
+//            if(Input.GetMouseButtonDown(0))
+//            {
+//                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+//                RaycastHit hit;
+//                if(Physics.Raycast(ray, out hit))
+//                {
+//                    if(hit.transform.tag == "Settlement")
+//                    {
+//                        if(hit.transform.GetComponent<ScriptBoardCorner>().CheckValidBuild())
+//                        {
+//                            Debug.Log("Valid Settlement Placement");
+//                            players[0].RemoveBricks(1);
+//                            players[0].RemoveLumber(1);
+//                            players[0].RemoveWheat(1);
+//                            players[0].RemoveWool(1);
+//                            BuildSettlementMenu.SetActive(false);
+//                            BuildRoadMenu.SetActive(false);
+//                            DisplayRoadButton();
+//                            DisplaySettlementButton();
+//                            break;
+//                        }
+//                        else
+//                        {
+//                            Debug.Log("Invalid Settlement Placement");
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+//    void DisplayRoadButton()
+//    {
+//        if(players[0].NumBrick >= 1 && players [0].NumLumber >= 1)
+//        {
+//            BuildRoadMenu.SetActive(true);
+//        }
+//    }
+
+//    public void BuyRoad()
+//    {
+//        while (true)
+//        {
+//            if (Input.GetMouseButtonDown(0))
+//            {
+//                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+//                RaycastHit hit;
+//                if (Physics.Raycast(ray, out hit))
+//                {
+//                    if (hit.transform.tag == "Road")
+//                    {
+//                        if (hit.transform.GetComponent<ScriptBoardEdge>().CheckValidBuild())
+//                        {
+//                            Debug.Log("Valid Road Placement");
+//                            players[0].RemoveBricks(1);
+//                            players[0].RemoveLumber(1);
+//                            BuildSettlementMenu.SetActive(false);
+//                            BuildRoadMenu.SetActive(false);
+//                            DisplayRoadButton();
+//                            DisplaySettlementButton();
+//                            break;
+//                        }
+//                        else
+//                        {
+//                            Debug.Log("Invalid Road Placement");
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+//    public void NextPhase()
+//    {
+//        MoveNextAndTransition("goto phase 4");
+//    }
+
+//    #endregion
+
+//    #region Phase 4
+//    void Phase4()
+//    {
+//        Debug.Log("Entering Phase 4");
+
+//        StartCoroutine("CheckForEndTurn");
+
+
+//    }
+
+//    IEnumerator CheckForEndTurn()
+//    {
+//        bool endTurn;
+//        while (true)
+//        {
+//            endTurn = true;
+//            foreach (ScriptPlayer player in players)
+//            {
+//                if (endTurn == true && player.EndTurn == false)
+//                {
+//                    endTurn = false;
+//                }
+//            }
+//            if(endTurn)
+//            {
+//                break;
+//            }
+//            yield return null;
+//        }
+//        if (endTurn)
+//        {
+//            Debug.Log(players.Count);
+//            for (int i = 0; i < players.Count; i++)
+//            {
+//                players[i].EndTurn = false;
+//            }
+
+//            MoveNextAndTransition("goto phase 5");
+//            yield break;  
+//        }
+//        yield return null;
+        
+//    }
+
+//    public void ReturnToTrade()
+//    {
+//        StopCoroutine("CheckForEndTurn");
+//        players[0].EndTurn = false;
+//        MoveNextAndTransition("goto phase 2");
+//    }
+
+//    public void ReturnToBuild()
+//    {
+//        StopCoroutine("CheckForEndTurn");
+//        players[0].EndTurn = false;
+//        MoveNextAndTransition("goto phase 3");
+//    }
+
+//    public void EndTurn()
+//    {
+//        players[0].EndTurn = true;
+//    }
+//    #endregion
+
+//    #region Phase 5
+//    void Phase5()
+//    {
+//        Debug.Log("Entering Phase 5");
+
+//        CheckForWinner();
+//    }
+
+
+//    void CheckForWinner()
+//    {
+//        Debug.Log("Checking for winner");
+
+//        Debug.Log("Start Processing");
+//        for(int i = 0; i < players.Count; i++)
+//        {
+//            if (players[i].NumSettlements > 1.25 * players.Count)
+//            {
+//                winningPlayerNumber = i;
+//            }
+//        }
+
+//        if(winningPlayerNumber != -1)
+//        {
+//            Debug.Log("End Processing");
+//            Debug.Log("Winner found");
+//            MoveNextAndTransition("goto phase 6");
+//        }
+//        else
+//        {
+//            Debug.Log("End Processing");
+//            Debug.Log("No winner");
+//            MoveNextAndTransition("goto phase 1");
+//        }
+//    }
+//    #endregion
+
+//    #region Phase 6
+//    void Phase6(int player)
+//    {
+//        Debug.Log("Entering Phase 6");
+//        WinnerText.text = ("Winner: " + players[player].PlayerName);
+//    }
+
+//    public void QuitApplication()
+//    {
+//        Application.Quit();
+//    }
+//    #endregion
+//>>>>>>> mdobson2/master
+//}
