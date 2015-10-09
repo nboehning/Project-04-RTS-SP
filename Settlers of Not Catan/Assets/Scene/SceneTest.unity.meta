@@ -1,7 +1,13 @@
 fileFormatVersion: 2
+<<<<<<< HEAD
 guid: f0e11412ab5c8a642b119e26b4797b55
 timeCreated: 1444347960
 licenseType: Free
+=======
+guid: ee480e53db2b5d748af0e15e9064df59
+timeCreated: 1444347855
+licenseType: Pro
+>>>>>>> mdobson2/master
 DefaultImporter:
   userData: 
   assetBundleName: 
