@@ -20,7 +20,7 @@ public class ScriptBoardHex : MonoBehaviour {
     public ScriptEngine engine;
     public float hexSideLength;
     public int hexDieValue;
-    //public HexType resource;
+    public HexType resource;
 
     List<ScriptBoardCorner> cornerScripts = new List<ScriptBoardCorner>(0);    
     
