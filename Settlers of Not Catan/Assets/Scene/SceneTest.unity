@@ -400,7 +400,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &221993528
 RectTransform:
   m_ObjectHideFlags: 0
@@ -640,8 +640,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 350753943}
-        m_MethodName: MoveNextAndTransition
-        m_Mode: 5
+        m_MethodName: QuitApplication
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -1026,7 +1026,7 @@ MonoBehaviour:
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: goto phase 5
+          m_StringArgument: goto phase 3
           m_BoolArgument: 0
         m_CallState: 2
     m_TypeName: UnityEngine.UI.Button+ButtonClickedEvent, UnityEngine.UI, Version=1.0.0.0,
@@ -1195,8 +1195,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 350753943}
-        m_MethodName: MoveNextAndTransition
-        m_Mode: 5
+        m_MethodName: BuyRoad
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -1310,14 +1310,14 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 350753943}
-        m_MethodName: MoveNextAndTransition
-        m_Mode: 5
+        m_MethodName: 
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: goto phase 5
+          m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
     m_TypeName: UnityEngine.UI.Button+ButtonClickedEvent, UnityEngine.UI, Version=1.0.0.0,
@@ -1377,15 +1377,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   players: []
-  phase0menu: {fileID: 221993527}
-  phase1menu: {fileID: 1129381971}
-  phase2menu: {fileID: 1377131195}
-  phase3menu: {fileID: 573585065}
-  BuildSettlementMenu: {fileID: 0}
-  BuildRoadMenu: {fileID: 0}
-  phase4menu: {fileID: 0}
-  phase5menu: {fileID: 0}
-  phase6menu: {fileID: 0}
+  phase0menu: {fileID: 893966431}
+  phase0button: {fileID: 221993527}
+  phase1menu: {fileID: 726039355}
+  phase2menu: {fileID: 667586775}
+  phase3menu: {fileID: 1190638718}
+  BuildSettlementMenu: {fileID: 1412957725}
+  BuildRoadMenu: {fileID: 336658184}
+  phase4menu: {fileID: 1230513121}
+  phase5menu: {fileID: 214990362}
+  phase6menu: {fileID: 1365185874}
   WinnerText: {fileID: 0}
 --- !u!4 &350753944
 Transform:
@@ -1398,7 +1399,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 5
 --- !u!1 &375421507
 GameObject:
   m_ObjectHideFlags: 0
@@ -1663,6 +1664,48 @@ CanvasRenderer:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 452814423}
+--- !u!1001 &558045890
+Prefab:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 403552, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+      propertyPath: m_LocalPosition.x
+      value: 4.9720459
+      objectReference: {fileID: 0}
+    - target: {fileID: 403552, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+      propertyPath: m_LocalPosition.y
+      value: 4.67514038
+      objectReference: {fileID: 0}
+    - target: {fileID: 403552, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+      propertyPath: m_LocalPosition.z
+      value: 5.1740365
+      objectReference: {fileID: 0}
+    - target: {fileID: 403552, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 403552, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 403552, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 403552, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 403552, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_ParentPrefab: {fileID: 100100000, guid: a8920fd7f096bf04a81b3fcbf8e235ed, type: 2}
+  m_IsPrefabParent: 0
 --- !u!1 &573585065
 GameObject:
   m_ObjectHideFlags: 0
@@ -1814,7 +1857,7 @@ RectTransform:
   - {fileID: 214990363}
   - {fileID: 1365185875}
   m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
@@ -2763,7 +2806,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &893966432
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3073,7 +3116,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &973072450
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4138,7 +4181,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 1
+  m_RootOrder: 2
 --- !u!1 &1328863800
 GameObject:
   m_ObjectHideFlags: 0
@@ -4627,8 +4670,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 350753943}
-        m_MethodName: MoveNextAndTransition
-        m_Mode: 5
+        m_MethodName: BuySettlement
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -5399,7 +5442,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
+  m_RootOrder: 4
 --- !u!1 &1834338430
 GameObject:
   m_ObjectHideFlags: 0
@@ -5611,7 +5654,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 0
+  m_RootOrder: 1
 --- !u!1 &1988578579
 GameObject:
   m_ObjectHideFlags: 0

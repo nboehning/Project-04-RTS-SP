@@ -46,6 +46,7 @@ public class ScriptEngine : MonoBehaviour {
 
     #region Phase 0 variables
     public GameObject phase0menu; //the phase 0 menu
+    public GameObject phase0button;
     #endregion
 
     #region Phase 1 variables
@@ -204,7 +205,57 @@ public class ScriptEngine : MonoBehaviour {
     void Phase0()
     {
         Debug.Log("Entering Phase 0");
+
+        StartCoroutine("GetSettlement");
+        StartCoroutine("GetRoad");
+
+        phase0button.SetActive(true);
+        
         //MoveNextAndTransition("goto phase 5");
+    }
+
+    IEnumerator GetSettlement()
+    {
+        while (true)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                RaycastHit hit;
+                if (Physics.Raycast(ray, out hit))
+                {
+                    if (hit.transform.tag == "Settlement")
+                    {
+                        hit.transform.GetComponent<ScriptBoardCorner>().owner = players[0];
+                        break;
+                    }
+                }
+            }
+            yield return null;
+        }
+    }
+
+    IEnumerator GetRoad()
+    {
+        while (true)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                RaycastHit hit;
+                if (Physics.Raycast(ray, out hit))
+                {
+                    if (hit.transform.tag == "Road")
+                    {
+                        if (hit.transform.GetComponent<ScriptBoardEdge>().CheckStartRoad())
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            yield return null;
+        }
     }
     #endregion
 
@@ -247,7 +298,38 @@ public class ScriptEngine : MonoBehaviour {
 
     public void BuySettlement()
     {
-
+        while(true)
+        {
+            if(Input.GetMouseButtonDown(0))
+            {
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                RaycastHit hit;
+                if(Physics.Raycast(ray, out hit))
+                {
+                    if(hit.transform.tag == "Settlement")
+                    {
+                        if(hit.transform.GetComponent<ScriptBoardCorner>().CheckValidBuild())
+                        {
+                            Debug.Log("Valid Settlement Placement");
+                            players[0].RemoveBricks(1);
+                            players[0].RemoveLumber(1);
+                            players[0].RemoveWheat(1);
+                            players[0].RemoveWool(1);
+                            BuildSettlementMenu.SetActive(false);
+                            BuildRoadMenu.SetActive(false);
+                            DisplayRoadButton();
+                            DisplaySettlementButton();
+                            break;
+                        }
+                        else
+                        {
+                            Debug.Log("Invalid Settlement Placement");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void DisplayRoadButton()
@@ -260,7 +342,36 @@ public class ScriptEngine : MonoBehaviour {
 
     public void BuyRoad()
     {
-
+        while (true)
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                RaycastHit hit;
+                if (Physics.Raycast(ray, out hit))
+                {
+                    if (hit.transform.tag == "Road")
+                    {
+                        if (hit.transform.GetComponent<ScriptBoardEdge>().CheckValidBuild())
+                        {
+                            Debug.Log("Valid Road Placement");
+                            players[0].RemoveBricks(1);
+                            players[0].RemoveLumber(1);
+                            BuildSettlementMenu.SetActive(false);
+                            BuildRoadMenu.SetActive(false);
+                            DisplayRoadButton();
+                            DisplaySettlementButton();
+                            break;
+                        }
+                        else
+                        {
+                            Debug.Log("Invalid Road Placement");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public void NextPhase()
