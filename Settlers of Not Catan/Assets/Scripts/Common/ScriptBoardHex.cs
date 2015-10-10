@@ -32,7 +32,6 @@ public class ScriptBoardHex : MonoBehaviour
     public int hexDieValue;
     public HexType resource;
 
-    List<ScriptBoardEdge> edgeScripts = new List<ScriptBoardEdge>(0);
 
     void Start()
     {
@@ -66,7 +65,7 @@ public class ScriptBoardHex : MonoBehaviour
             }
             if (!edgeFound)
             {
-                GameObject temp = (GameObject)Instantiate(edgePrefab, cornerPos, Quaternion.identity);
+                Instantiate(edgePrefab, cornerPos, Quaternion.identity);
             }
         }
     }

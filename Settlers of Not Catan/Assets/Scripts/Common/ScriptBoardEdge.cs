@@ -42,7 +42,6 @@ public class ScriptBoardEdge : MonoBehaviour {
 
     public void FindAdjacentRoads()
     {
-        Vector3 center = transform.position;
         float colliderRadius = transform.lossyScale.y * 2.5f;
         Collider[] hitColliders = Physics.OverlapSphere(transform.position, colliderRadius);
         foreach (Collider other in hitColliders)
