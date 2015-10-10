@@ -132,6 +132,31 @@ public class ScriptEngine : MonoBehaviour
     }
 
     #region Common Class Methods
+
+    public void LoadTransition(GameState state, string command)
+    {
+        CurrentState = state;
+        switch(state)
+        {
+            case GameState.PHASE1:
+                PreviousState = GameState.PHASE5;
+                phase1menu.SetActive(true);
+                break;
+            case GameState.PHASE2:
+                PreviousState = GameState.PHASE1;
+                MoveNextAndTransition(command);
+                break;
+            case GameState.PHASE3:
+                PreviousState = GameState.PHASE2;
+                MoveNextAndTransition(command);
+                break;
+            case GameState.PHASE4:
+                PreviousState = GameState.PHASE3;
+                MoveNextAndTransition(command);
+                break;
+        }
+    }
+
     void ResourcesText()
     {
         if(NumBrick != null)
