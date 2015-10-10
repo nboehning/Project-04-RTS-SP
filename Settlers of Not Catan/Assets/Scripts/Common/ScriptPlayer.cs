@@ -6,7 +6,7 @@ using System.Collections.Generic;
 /// @author Mike Dobson
 /// </summary>
 
-public class ScriptPlayer : MonoBehaviour {
+public class ScriptPlayer {
 
     public List<GameObject> settlements;
     public List<GameObject> roads;
@@ -15,7 +15,10 @@ public class ScriptPlayer : MonoBehaviour {
     
     public void GainResources(int diceRoll)
     {
-
+        foreach(GameObject settlement in settlements)
+        {
+            settlement.GetComponent<ScriptBoardCorner>().GainResources(diceRoll);
+        }
     }
 
     public int NumLumber
