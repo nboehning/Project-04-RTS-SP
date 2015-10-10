@@ -6,7 +6,7 @@ using System.Collections.Generic;
 /// @author Mike Dobson
 /// </summary>
 
-public class ScriptPlayer : MonoBehaviour {
+public class ScriptPlayer {
 
     public List<GameObject> settlements;
     public List<GameObject> roads;
