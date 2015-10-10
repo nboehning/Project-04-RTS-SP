@@ -362,6 +362,8 @@ public class ScriptEngine : MonoBehaviour
         ResourcesText();
         int diceRoll = Random.Range(1, 6);
         Debug.Log("Dice Roll " + diceRoll);
+        Debug.Log("Checking Settlements");
+        players[0].GainResources(diceRoll);
         //MoveNextAndTransition("goto phase 2");
     }
     #endregion
@@ -386,6 +388,19 @@ public class ScriptEngine : MonoBehaviour
         DisplaySettlementButton();
     }
 
+    public void ActivateBuilding(string command)
+    {
+        switch(command)
+        {
+            case "buildRoad":
+                StartCoroutine("BuyRoad");
+                break;
+            case "buildSettlement":
+                StartCoroutine("BuySettlement");
+                break;
+        }
+    }
+
     void DisplaySettlementButton()
     {
         if (players[0].NumBrick >= 1 && players[0].NumLumber >= 1 && players[0].NumWheat >= 1 && players[0].NumWool >= 1)
@@ -394,7 +409,7 @@ public class ScriptEngine : MonoBehaviour
         }
     }
 
-    public void BuySettlement()
+    IEnumerator BuySettlement()
     {
         while (true)
         {
@@ -428,6 +443,7 @@ public class ScriptEngine : MonoBehaviour
                     }
                 }
             }
+            yield return null;
         }
     }
 
@@ -439,7 +455,7 @@ public class ScriptEngine : MonoBehaviour
         }
     }
 
-    public void BuyRoad()
+    IEnumerator BuyRoad()
     {
         while (true)
         {
@@ -471,6 +487,7 @@ public class ScriptEngine : MonoBehaviour
                     }
                 }
             }
+            yield return null;
         }
     }
 

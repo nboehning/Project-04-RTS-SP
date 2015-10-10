@@ -15,7 +15,10 @@ public class ScriptPlayer : MonoBehaviour {
     
     public void GainResources(int diceRoll)
     {
-
+        foreach(GameObject settlement in settlements)
+        {
+            settlement.GetComponent<ScriptBoardCorner>().GainResources(diceRoll);
+        }
     }
 
     public int NumLumber
