@@ -45,6 +45,14 @@ public class ScriptEngine : MonoBehaviour
     public GameState CurrentState { get; private set; } //the current state of the game
     public GameState PreviousState { get; private set; } //the previous state of the game
 
+    #region Basic GUI Elements
+    public Text PhaseText;
+    public Text NumLumber;
+    public Text NumWool;
+    public Text NumBrick;
+    public Text NumGrain;
+    #endregion
+
     #region Phase 0 variables
     public GameObject phase0menu; //the phase 0 menu
     public GameObject phase0button;
@@ -121,6 +129,109 @@ public class ScriptEngine : MonoBehaviour
 
         Debug.Log("Current state: " + CurrentState);
         Phase0();
+    }
+
+    #region Common Class Methods
+
+    public void LoadTransition(GameState state, string command)
+    {
+        CurrentState = state;
+        switch(state)
+        {
+            case GameState.PHASE1:
+                PreviousState = GameState.PHASE5;
+                phase1menu.SetActive(true);
+                break;
+            case GameState.PHASE2:
+                PreviousState = GameState.PHASE1;
+                MoveNextAndTransition(command);
+                break;
+            case GameState.PHASE3:
+                PreviousState = GameState.PHASE2;
+                MoveNextAndTransition(command);
+                break;
+            case GameState.PHASE4:
+                PreviousState = GameState.PHASE3;
+                MoveNextAndTransition(command);
+                break;
+        }
+    }
+
+    void ResourcesText()
+    {
+        if(NumBrick != null)
+        {
+            NumBrick.text = players[0].NumBrick.ToString();
+        }
+        else
+        {
+            throw new UnityException("No Brick Text in Engine");
+        }
+        
+        if(NumGrain != null)
+        {
+            NumGrain.text = players[0].NumWheat.ToString();
+        }
+        else
+        {
+            throw new UnityException("No Grain Text in Engine");
+        }
+
+        if(NumLumber != null)
+        {
+            NumLumber.text = players[0].NumLumber.ToString();
+        }
+        else
+        {
+            throw new UnityException("No Lumber Text in Engine");
+        }
+
+        if(NumWool != null)
+        {
+            NumWool.text = players[0].NumWool.ToString();
+        }
+        else
+        {
+            throw new UnityException("No Wool Text in Engine");
+        }
+    }
+
+    void PhaseTextTransition()
+    {
+        if (PhaseText != null)
+        {
+            switch (CurrentState)
+            {
+                case GameState.PHASE0:
+                    PhaseText.text = "Setup Phase";
+                    break;
+                case GameState.PHASE1:
+                    PhaseText.text = "Rolling Dice";
+                    break;
+                case GameState.PHASE2:
+                    PhaseText.text = "Trade";
+                    break;
+                case GameState.PHASE3:
+                    PhaseText.text = "Build";
+                    break;
+                case GameState.PHASE4:
+                    PhaseText.text = "End Turn";
+                    break;
+                case GameState.PHASE5:
+                    PhaseText.text = "Processing";
+                    break;
+                case GameState.PHASE6:
+                    PhaseText.text = "Winner is:";
+                    break;
+                default:
+                    PhaseText.text = "Current Phase Text";
+                    break;
+            }
+        }
+        else
+        {
+            throw new UnityException("No Phase text in Engine");
+        }
     }
 
     GameState GetNext(StateCommands command)
@@ -202,18 +313,25 @@ public class ScriptEngine : MonoBehaviour
                 break;
         }
     }
+    #endregion
 
     #region Phase 0
     void Phase0()
     {
         Debug.Log("Entering Phase 0");
-
-        StartCoroutine("GetSettlement");
-        StartCoroutine("GetRoad");
-
-        phase0button.SetActive(true);
+        PhaseTextTransition();
+        ResourcesText();
+        StartCoroutine("StartGame");
 
         //MoveNextAndTransition("goto phase 5");
+    }
+
+    IEnumerator StartGame()
+    {
+        yield return StartCoroutine("GetSettlement");
+        yield return StartCoroutine("GetRoad");
+
+        phase0button.SetActive(true);
     }
 
     IEnumerator GetSettlement()
@@ -265,9 +383,12 @@ public class ScriptEngine : MonoBehaviour
     void Phase1()
     {
         Debug.Log("Entering Phase 1");
-
+        PhaseTextTransition();
+        ResourcesText();
         int diceRoll = Random.Range(1, 6);
         Debug.Log("Dice Roll " + diceRoll);
+        Debug.Log("Checking Settlements");
+        players[0].GainResources(diceRoll);
         //MoveNextAndTransition("goto phase 2");
     }
     #endregion
@@ -276,7 +397,8 @@ public class ScriptEngine : MonoBehaviour
     void Phase2()
     {
         Debug.Log("Entering Phase 2");
-
+        PhaseTextTransition();
+        ResourcesText();
         //MoveNextAndTransition("goto phase 3");
     }
     #endregion
@@ -285,9 +407,23 @@ public class ScriptEngine : MonoBehaviour
     void Phase3()
     {
         Debug.Log("Entering Phase 3");
-
+        PhaseTextTransition();
+        ResourcesText();
         DisplayRoadButton();
         DisplaySettlementButton();
+    }
+
+    public void ActivateBuilding(string command)
+    {
+        switch(command)
+        {
+            case "buildRoad":
+                StartCoroutine("BuyRoad");
+                break;
+            case "buildSettlement":
+                StartCoroutine("BuySettlement");
+                break;
+        }
     }
 
     void DisplaySettlementButton()
@@ -298,7 +434,7 @@ public class ScriptEngine : MonoBehaviour
         }
     }
 
-    public void BuySettlement()
+    IEnumerator BuySettlement()
     {
         while (true)
         {
@@ -319,6 +455,7 @@ public class ScriptEngine : MonoBehaviour
                             players[0].RemoveWool(1);
                             BuildSettlementMenu.SetActive(false);
                             BuildRoadMenu.SetActive(false);
+                            ResourcesText();
                             DisplayRoadButton();
                             DisplaySettlementButton();
                             break;
@@ -331,6 +468,7 @@ public class ScriptEngine : MonoBehaviour
                     }
                 }
             }
+            yield return null;
         }
     }
 
@@ -342,7 +480,7 @@ public class ScriptEngine : MonoBehaviour
         }
     }
 
-    public void BuyRoad()
+    IEnumerator BuyRoad()
     {
         while (true)
         {
@@ -361,6 +499,7 @@ public class ScriptEngine : MonoBehaviour
                             players[0].RemoveLumber(1);
                             BuildSettlementMenu.SetActive(false);
                             BuildRoadMenu.SetActive(false);
+                            ResourcesText();
                             DisplayRoadButton();
                             DisplaySettlementButton();
                             break;
@@ -373,6 +512,7 @@ public class ScriptEngine : MonoBehaviour
                     }
                 }
             }
+            yield return null;
         }
     }
 
@@ -387,7 +527,8 @@ public class ScriptEngine : MonoBehaviour
     void Phase4()
     {
         Debug.Log("Entering Phase 4");
-
+        PhaseTextTransition();
+        ResourcesText();
         StartCoroutine("CheckForEndTurn");
 
 
@@ -451,6 +592,7 @@ public class ScriptEngine : MonoBehaviour
     void Phase5()
     {
         Debug.Log("Entering Phase 5");
+        PhaseTextTransition();
 
         CheckForWinner();
     }
@@ -488,6 +630,7 @@ public class ScriptEngine : MonoBehaviour
     void Phase6(int player)
     {
         Debug.Log("Entering Phase 6");
+        ResourcesText();
         WinnerText.text = ("Winner: " + players[player].PlayerName);
     }
 

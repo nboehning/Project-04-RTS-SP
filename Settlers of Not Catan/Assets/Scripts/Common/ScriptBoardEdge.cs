@@ -9,6 +9,11 @@ public class ScriptBoardEdge : MonoBehaviour {
     public List<ScriptBoardEdge> adjacentRoads = new List<ScriptBoardEdge>(0);
     public List<ScriptBoardCorner> adjacentSettlements = new List<ScriptBoardCorner>(0);
 
+    void Start()
+    {
+        engine = GameObject.Find("GameEngine").GetComponent<ScriptEngine>();
+    }
+
     public bool CheckValidBuild()
     {
         foreach (ScriptBoardEdge road in adjacentRoads)
@@ -33,5 +38,18 @@ public class ScriptBoardEdge : MonoBehaviour {
             }
         }
         return false;
+    }
+
+    public void FindAdjacentRoads()
+    {
+        float colliderRadius = transform.lossyScale.y * 2.5f;
+        Collider[] hitColliders = Physics.OverlapSphere(transform.position, colliderRadius);
+        foreach (Collider other in hitColliders)
+        {
+            if (other.tag == "Road" && other.gameObject != this.gameObject)
+            {
+                adjacentRoads.Add(other.gameObject.GetComponent<ScriptBoardEdge>());
+            }
+        }
     }
 }

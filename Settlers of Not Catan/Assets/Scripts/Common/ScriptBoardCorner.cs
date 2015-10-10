@@ -10,6 +10,10 @@ public class ScriptBoardCorner : MonoBehaviour {
     public List<ScriptBoardHex> adjacentHexes = new List<ScriptBoardHex>(0);
     public List<ScriptBoardEdge> adjacentRoads = new List<ScriptBoardEdge>(0);
 
+    void Start()
+    {
+        engine = GameObject.Find("GameEngine").GetComponent<ScriptEngine>();
+    }
 
     public bool CheckValidBuild()
     {
