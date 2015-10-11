@@ -26,6 +26,8 @@ public class ScriptMapCreationWindow : EditorWindow
     int[] intPopup = { 1, 2, 3, 4, 5, 6 };
     
     // Stuff for heuristics
+    private int numUnsetType = 1;
+    private int numUnsetRollNum = 1;
     private int numWool;
     private int numWood;
     private int numBrick;
@@ -53,9 +55,6 @@ public class ScriptMapCreationWindow : EditorWindow
     {
         xOffset = 375f;
         yOffset = 50f;
-        EditorGUILayout.BeginHorizontal();
-
-        EditorGUILayout.BeginVertical("box", GUILayout.Width(position.width - 5), GUILayout.Height(position.height - 40f));
 
         #region Map Data
 
@@ -80,7 +79,7 @@ public class ScriptMapCreationWindow : EditorWindow
         #endregion
 
 
-        #region heuristic display
+        #region Heuristic Display
         float heuristicOffset = 750f;
          
         // Displays the heuristics to the designer
@@ -102,6 +101,10 @@ public class ScriptMapCreationWindow : EditorWindow
 
         Rect numWoolLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
         EditorGUI.LabelField(numWoolLabelRect, "Wool: " + numWool);
+        heuristicOffset += 17f;
+
+        Rect typeUnsetLabelRect = new Rect(100f, heuristicOffset, 150f, 15f);
+        EditorGUI.LabelField(typeUnsetLabelRect, "Hex Types Unset: " + numUnsetType, EditorStyles.boldLabel);
         heuristicOffset += 17f;
 
         Rect numOneLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
@@ -126,9 +129,12 @@ public class ScriptMapCreationWindow : EditorWindow
 
         Rect numSixLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
         EditorGUI.LabelField(numSixLabelRect, "6's: " + numSixes);
+        heuristicOffset += 17f;
 
-#endregion
+        Rect rollUnsetLabelRect = new Rect(100f, heuristicOffset, 150f, 15f);
+        EditorGUI.LabelField(rollUnsetLabelRect, "Roll Values Unset: " + numUnsetRollNum, EditorStyles.boldLabel);
 
+        #endregion
 
         GUIStyle style = EditorStyles.label;
 
@@ -136,6 +142,7 @@ public class ScriptMapCreationWindow : EditorWindow
 
 
         // @author: MARSHALL AND HIS MATH GODLINESS, plus nathan
+
         #region Map
         for (int i = 0; i < numRows; i++)
         {
@@ -211,6 +218,7 @@ public class ScriptMapCreationWindow : EditorWindow
                                         break;
                                     default:
                                         hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                        numUnsetRollNum--;
                                         break;
                                 }
                             }
@@ -253,6 +261,7 @@ public class ScriptMapCreationWindow : EditorWindow
                                         break;
                                     default:
                                         hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                        numUnsetType--;
                                         break;
 
                                 }
@@ -306,8 +315,6 @@ public class ScriptMapCreationWindow : EditorWindow
                                     Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.blue, 1f, true);
                                     break;
                             }
-                            Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.blue, 1f, true);
-                            Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.blue, 1f, true);
                         }
                         else
                         {
@@ -465,6 +472,7 @@ public class ScriptMapCreationWindow : EditorWindow
                                     break;
                                 default:
                                     hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                    numUnsetRollNum--;
                                     break;
                             }
                         }
@@ -507,6 +515,7 @@ public class ScriptMapCreationWindow : EditorWindow
                                     break;
                                 default:
                                     hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                    numUnsetType--;
                                     break;
 
                             }
@@ -562,8 +571,6 @@ public class ScriptMapCreationWindow : EditorWindow
                                     Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.blue, 1f, true);
                                     break;
                             }
-                            Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.blue, 1f, true);
-                            Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.blue, 1f, true);
                         }
                         else
                         {
@@ -657,21 +664,20 @@ public class ScriptMapCreationWindow : EditorWindow
 
         #endregion
 
-        EditorGUILayout.EndVertical();
 
-        EditorGUILayout.EndHorizontal();
-
-
-        Rect ExportDataButtonRect = new Rect((position.width / 2f) - 37f, position.height - 50f, 100f, 25f);
+        #region Export Data Button
+        Rect exportDataButtonRect = new Rect((position.width / 2f) - 37f, position.height - 50f, 100f, 25f);
         Color oldColor = GUI.color;
 
         GUI.color = Color.green;
-        if (GUI.Button(ExportDataButtonRect, "Export Data"))
+        if (GUI.Button(exportDataButtonRect, "Export Data"))
         {
             Debug.Log("Exports the data!");
         }
 
         GUI.color = oldColor;
+
+        #endregion
     }
 
     void InitializeVariables()
@@ -703,6 +709,7 @@ public class ScriptMapCreationWindow : EditorWindow
 
         hexMap[7][7].isActive = true;
         hexMap[7][7].hexType = HexType.WOOD;
+        hexMap[7][7].hexNum = 3;
         TurnOnActive(7, 7);
 
     }
@@ -714,13 +721,23 @@ public class ScriptMapCreationWindow : EditorWindow
         // Check directly right
         if (startColumn + 1 < hexMap[startRow].Length)
         {
-            hexMap[startRow][startColumn + 1].isActive = true;
+            if (!hexMap[startRow][startColumn + 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow][startColumn + 1].isActive = true;
+            }
         }
 
         // Check directly left
         if (startColumn - 1 >= 0)
         {
-            hexMap[startRow][startColumn - 1].isActive = true;
+            if (!hexMap[startRow][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow][startColumn - 1].isActive = true;
+            }            
         }
 
         // First row of map
@@ -729,13 +746,23 @@ public class ScriptMapCreationWindow : EditorWindow
             // Check down right
             if (startColumn + 1 < hexMap[startRow + 1].Length && startRow + 1 < hexMap.Length)
             {
-                hexMap[startRow + 1][startColumn + 1].isActive = true;
+                if (!hexMap[startRow + 1][startColumn + 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow + 1][startColumn + 1].isActive = true;
+                }
             }
 
             // Check down left
             if (startColumn >= 0 && startRow + 1 < hexMap.Length)
             {
-                hexMap[startRow + 1][startColumn].isActive = true;
+                if (!hexMap[startRow + 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow + 1][startColumn].isActive = true;
+                }
             }
         }
 
@@ -743,31 +770,71 @@ public class ScriptMapCreationWindow : EditorWindow
         else if (startColumn == 0 && startRow < 7)
         {
             // Down left
-            hexMap[startRow + 1][startColumn].isActive = true;
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true;
+            }
 
             // Down right
-            hexMap[startRow + 1][startColumn + 1].isActive = true;
+            if (!hexMap[startRow + 1][startColumn + 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn + 1].isActive = true;
+            }
+
+            // Up right
+            if (!hexMap[startRow - 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn].isActive = true;
+            }
         }
 
         // Top half of map
         else if (startRow < 7)
         {
             // Down right
-            hexMap[startRow + 1][startColumn + 1].isActive = true;
+            if (!hexMap[startRow + 1][startColumn + 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn + 1].isActive = true;
+            }
+
 
             // Down left
-            hexMap[startRow + 1][startColumn].isActive = true;
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true; ;
+            }
+            
 
             // Check up left
             if (startColumn >= 0 && startRow - 1 >= 0)
             {
-                hexMap[startRow - 1][startColumn].isActive = true;
+                if (!hexMap[startRow - 1][startColumn - 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn - 1].isActive = true; ;
+                }
             }
 
             // Check up right
             if (startColumn + 1 < hexMap[startRow - 1].Length && startRow > 0)
             {
-                hexMap[startRow - 1][startColumn + 1].isActive = true;
+                if (!hexMap[startRow - 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn].isActive = true; ;
+                }
             }
         }
 
@@ -776,10 +843,20 @@ public class ScriptMapCreationWindow : EditorWindow
         {
 
             // Down left
-            hexMap[startRow + 1][startColumn - 1].isActive = true;
+            if (!hexMap[startRow + 1][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn - 1].isActive = true; ;
+            }
 
             // Up left
-            hexMap[startRow - 1][startColumn - 1].isActive = true;
+            if (!hexMap[startRow - 1][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn - 1].isActive = true; ;
+            }
 
         }
 
@@ -788,10 +865,20 @@ public class ScriptMapCreationWindow : EditorWindow
         {
 
             // Up right
-            hexMap[startRow - 1][startColumn].isActive = true;
+            if (!hexMap[startRow - 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn].isActive = true; ;
+            }
 
             // Down right
-            hexMap[startRow + 1][startColumn].isActive = true;
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true; ;
+            }
 
         }
 
@@ -799,16 +886,36 @@ public class ScriptMapCreationWindow : EditorWindow
         else if (startRow == 7)
         {
             // Down right
-            hexMap[startRow + 1][startColumn].isActive = true;
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true; ;
+            }
 
             // Down left
-            hexMap[startRow + 1][startColumn - 1].isActive = true;
+            if (!hexMap[startRow + 1][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn - 1].isActive = true; ;
+            }
 
             // Up left
-            hexMap[startRow - 1][startColumn - 1].isActive = true;
-            
+            if (!hexMap[startRow - 1][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn - 1].isActive = true; ;
+            }
+
             // Up right
-            hexMap[startRow - 1][startColumn].isActive = true;
+            if (!hexMap[startRow - 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn].isActive = true; ;
+            }
         }
 
         // Bottom row of map
@@ -817,13 +924,23 @@ public class ScriptMapCreationWindow : EditorWindow
             // Check up left
             if (startColumn >= 0)
             {
-                hexMap[startRow - 1][startColumn].isActive = true;
+                if (!hexMap[startRow - 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn].isActive = true; ;
+                }
             }
 
             // Check up right
             if (startColumn + 1 < hexMap[startRow - 1].Length)
             {
-                hexMap[startRow - 1][startColumn + 1].isActive = true;
+                if (!hexMap[startRow - 1][startColumn + 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn + 1].isActive = true; ;
+                }
             }
         }
 
@@ -831,40 +948,76 @@ public class ScriptMapCreationWindow : EditorWindow
         else if (startColumn == 0 && startRow > 7)
         {
             // Up left
-            hexMap[startRow - 1][startColumn].isActive = true;
+            if (!hexMap[startRow - 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn].isActive = true; ;
+            }
 
             // Up right
-            hexMap[startRow - 1][startColumn + 1].isActive = true;
+            if (!hexMap[startRow - 1][startColumn + 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn + 1].isActive = true; ;
+            }
 
             // Down right
-            hexMap[startRow + 1][startColumn].isActive = true;
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true; ;
+            }
+
         }
 
         // Bottom half of map
-        else if (startColumn < hexMap[startRow].Length - 1 && startRow > 7)
+        else if (startColumn <= hexMap[startRow].Length - 1 && startRow > 7)
         {
             // Check down right
-            if (startColumn + 1 < hexMap[startRow + 1].Length && startRow + 1 < hexMap.Length)
+            if (startColumn < hexMap[startRow + 1].Length && startRow + 1 < hexMap.Length)
             {
-                hexMap[startRow + 1][startColumn + 1].isActive = true;
+                if (!hexMap[startRow + 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow + 1][startColumn].isActive = true; ;
+                }
             }
 
             // Check down left
             if (startColumn - 1 >= 0 && startRow + 1 < hexMap.Length)
             {
-                hexMap[startRow + 1][startColumn - 1].isActive = true;
+                if (!hexMap[startRow + 1][startColumn - 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow + 1][startColumn - 1].isActive = true; ;
+                }
             }
 
             // Check up left
             if (startColumn >= 0 && startRow - 1 >= 0)
             {
-                hexMap[startRow - 1][startColumn].isActive = true;
+                if (!hexMap[startRow - 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn].isActive = true; ;
+                }
             }
 
             // Check up right
             if (startColumn + 1 < hexMap[startRow - 1].Length && startRow > 0)
             {
-                hexMap[startRow - 1][startColumn + 1].isActive = true;
+                if (!hexMap[startRow - 1][startColumn + 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn + 1].isActive = true; ;
+                }
             }
         }
     }
