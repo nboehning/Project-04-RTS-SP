@@ -14,11 +14,12 @@ public enum HexType
 public class ScriptHex
 {
     public HexType hexType;
-    public HexType prevHexType;
+    public HexType prevHexType = HexType.NONE;
     public Vector2 hexCenter;
     public Vector2[] hexCorners = new Vector2[6];
     public bool isActive = false;
     public int hexNum;
+    public int oldHexNum = 0;
 
     public ScriptHex(Vector2 center, float size)
     {
