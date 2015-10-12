@@ -4,8 +4,8 @@ using System.Collections;
 public class ScriptButtons : MonoBehaviour
 {
 
-    public void _BtnNextPhase()
+    public void _BtnStartGame()
     {
-        
+        Application.LoadLevel("SceneGame");
     }
 }
