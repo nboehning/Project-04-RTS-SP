@@ -97,7 +97,20 @@ public class ScriptBoardHex : MonoBehaviour
             }
             if (!settlementFound)
             {
-                GameObject temp = (GameObject)Instantiate(cornerPrefab, cornerPos, Quaternion.identity);
+                Quaternion rotationQ = Quaternion.identity;
+                Vector3 rotationV;
+                switch (i % 3)
+                {
+                    case 1:
+                        rotationV = new Vector3(0, 0, -56.03992f);
+                        rotationQ = Quaternion.Euler(rotationV);
+                        break;
+                    case 2:
+                        rotationV = new Vector3(0, 0, 56.03992f);
+                        rotationQ = Quaternion.Euler(rotationV);
+                        break;
+                }
+                GameObject temp = (GameObject)Instantiate(cornerPrefab, cornerPos, rotationQ);
                 temp.gameObject.GetComponent<ScriptBoardCorner>().adjacentHexes.Add(this);
             }
         }
