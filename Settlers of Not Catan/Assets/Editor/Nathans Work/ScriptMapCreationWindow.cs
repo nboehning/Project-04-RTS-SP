@@ -1,55 +1,149 @@
-﻿using System.Threading;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
 public class ScriptMapCreationWindow : EditorWindow
 {
 
-    private Vector2 mapDataScrollPos = Vector2.zero;
+    // Hex map variables
+    private ScriptHex[][] hexMap = new ScriptHex[15][];
+    private int selectedRow = 7;
+    private int selectedColumn = 7;
+
+
+    // Drawing of map variables
     private int numRows = 15;
-    private int hexEdgeLength = 30;
+    private int hexEdgeLength = 40;
     private Rect labelPosition;
     private float xOffset = 45f;
     private float yOffset = 200f;
     private string labelText;
     private Vector2 hexCenter;
-    private Color oldColor;
-    private ScriptHex selectedHex = new ScriptHex(Vector2.zero, 2);
-    private int curHex = 0;
-    private ScriptHex[] hexMap = new ScriptHex[169];
+    private const float MAGIC_EDGE_DISTANCE_CONVERT = 0.86602540378f;   //Mathf.Sqrt(0.75f) & -Sin(Mathf.PI * 4 / 3) (apparently) Marshallllllll
+
+    // Hex data variables
     string[] intPopupString = { "1", "2", "3", "4", "5", "6" };
     int[] intPopup = { 1, 2, 3, 4, 5, 6 };
+    
+    // Stuff for heuristics
+    private int numUnsetType = 1;
+    private int numUnsetRollNum = 1;
     private int numWool;
     private int numWood;
     private int numBrick;
     private int numWheat;
-    private const float MAGIC_EDGE_DISTANCE_CONVERT = 0.86602540378f;   //Mathf.Sqrt(0.75f) & -Sin(Mathf.PI * 4 / 3) (apparently) Marshallllllll
+    private int numOnes;
+    private int numTwos;
+    private int numThrees;
+    private int numFours;
+    private int numFives;
+    private int numSixes;
 
     [MenuItem("Tools/Create New Map")]
     private static void Init()
     {
         // Get existing open window or if none, make a new one:
         ScriptMapCreationWindow window = (ScriptMapCreationWindow)EditorWindow.GetWindow(typeof(ScriptMapCreationWindow));
-        window.position = new Rect(100, 50, 1250, 750);
-        window.maxSize = new Vector2(1250, 750);
+        window.position = new Rect(100, 50, 1250, 1000);
+        window.maxSize = new Vector2(1250, 1000);
         window.minSize = window.maxSize;
+        window.InitializeVariables();
         window.Show();
     }
 
     void OnGUI()
     {
-        xOffset = 250f;
-        yOffset = 45f;
-        //Debug.Log("Comment out this line");
-        EditorGUILayout.BeginHorizontal();
+        xOffset = 375f;
+        yOffset = 50f;
+
+        #region Map Data
+
+        Rect hexDataRect = new Rect(100f, 100f, 175f, 15f);
+        EditorGUI.LabelField(hexDataRect, "Selected Hex Data", EditorStyles.boldLabel);
+
+        Rect hexCoordinateLabelRect = new Rect(100f, 117f, 40f, 15f);
+        EditorGUI.LabelField(hexCoordinateLabelRect, string.Format("({0},{1})", selectedRow, selectedColumn));
+
+        Rect rollValueLabelRect = new Rect(100f, 134f, 70f, 15f);
+        EditorGUI.LabelField(rollValueLabelRect, "Roll Value: ");
+
+        Rect rollDropDownRect = new Rect(174f, 134f, 25f, 17f);
+        hexMap[selectedRow][selectedColumn].hexNum = EditorGUI.IntPopup(rollDropDownRect, hexMap[selectedRow][selectedColumn].hexNum, intPopupString, intPopup);
+        
+        Rect hexTypeLabelRect = new Rect(100f, 151f, 60f, 15f);
+        EditorGUI.LabelField(hexTypeLabelRect, "Hex Type: ");
+
+        Rect hexTypeRect = new Rect(174f, 151f, 75f, 17f);
+        hexMap[selectedRow][selectedColumn].hexType = (HexType)EditorGUI.EnumPopup(hexTypeRect, hexMap[selectedRow][selectedColumn].hexType);
+
+        #endregion
+
+
+        #region Heuristic Display
+        float heuristicOffset = 750f;
+         
+        // Displays the heuristics to the designer
+        Rect heuristicLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(heuristicLabelRect, "Amount Placed", EditorStyles.boldLabel);
+        heuristicOffset += 17f;
+
+        Rect numBrickLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numBrickLabelRect, "Brick: " + numBrick);
+        heuristicOffset += 17f;
+
+        Rect numWheatLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numWheatLabelRect, "Grain: " + numWheat);
+        heuristicOffset += 17f;
+
+        Rect numWoodLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numWoodLabelRect, "Wood: " + numWood);
+        heuristicOffset += 17f;
+
+        Rect numWoolLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numWoolLabelRect, "Wool: " + numWool);
+        heuristicOffset += 17f;
+
+        Rect typeUnsetLabelRect = new Rect(100f, heuristicOffset, 150f, 15f);
+        EditorGUI.LabelField(typeUnsetLabelRect, "Hex Types Unset: " + numUnsetType, EditorStyles.boldLabel);
+        heuristicOffset += 17f;
+
+        Rect numOneLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numOneLabelRect, "1's: " + numOnes);
+        heuristicOffset += 17f;
+
+        Rect numTwoLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numTwoLabelRect, "2's: " + numTwos);
+        heuristicOffset += 17f;
+
+        Rect numThreeLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numThreeLabelRect, "3's: " + numThrees);
+        heuristicOffset += 17f;
+
+        Rect numFourLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numFourLabelRect, "4's: " + numFours);
+        heuristicOffset += 17f;
+
+        Rect numFiveLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numFiveLabelRect, "5's: " + numFives);
+        heuristicOffset += 17f;
+
+        Rect numSixLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numSixLabelRect, "6's: " + numSixes);
+        heuristicOffset += 17f;
+
+        Rect rollUnsetLabelRect = new Rect(100f, heuristicOffset, 150f, 15f);
+        EditorGUI.LabelField(rollUnsetLabelRect, "Roll Values Unset: " + numUnsetRollNum, EditorStyles.boldLabel);
+
+        #endregion
+
+        GUIStyle style = EditorStyles.label;
+
+        style.alignment = TextAnchor.MiddleCenter;
+
 
         // @author: MARSHALL AND HIS MATH GODLINESS, plus nathan
+
         #region Map
-        EditorGUILayout.BeginVertical("box", GUILayout.Width(position.width * 0.70f), GUILayout.Height(position.height - 54));
-
-        EditorGUILayout.LabelField("Map", EditorStyles.boldLabel);
-
-        // yay marshall
         for (int i = 0; i < numRows; i++)
         {
             switch (i)
@@ -63,25 +157,251 @@ public class ScriptMapCreationWindow : EditorWindow
                 case 6:
                     for (int j = 0; j < 8 + i; j++)
                     {
-                        labelText = string.Format("{0},{1}", i, j);
-                        labelPosition = new Rect(xOffset, yOffset, 40f, 15f);
+                        labelText = string.Format("({0},{1})\n", i, j) + hexMap[i][j].hexType.ToString().ToLower() + "\n" + hexMap[i][j].hexNum;
+                        labelPosition = new Rect(xOffset, yOffset, 40f, 40f);
                         hexCenter.x = xOffset + 20f;
-                        hexCenter.y = yOffset + 8f;
-                        EditorGUI.LabelField(labelPosition, labelText);
-                        ScriptHex hex = new ScriptHex(hexCenter, hexEdgeLength);
+                        hexCenter.y = yOffset + 13f;
 
-                        for (int k = 0; k < 5; k++)
+                        if (hexMap[i][j].isActive)
                         {
-                            // Draw line from hex.hexCorners[k] to hex.hexCorners[k + 1]
+                            #region data change check
+                            // Check to modify the number of each dice roll if it's been changed
+                            if (hexMap[i][j].oldHexNum != hexMap[i][j].hexNum)
+                            {
+                                switch (hexMap[i][j].hexNum)
+                                {
+                                    case 1:
+                                        numOnes++;
+                                       break;
+                                    case 2:
+                                        numTwos++;
+                                        break;
+                                    case 3:
+                                        numThrees++;
+                                        break;
+                                    case 4:
+                                        numFours++;
+                                        break;
+                                    case 5:
+                                        numFives++;
+                                        break;
+                                    case 6:
+                                        numSixes++;
+                                        break;
+                                }
+                                switch (hexMap[i][j].oldHexNum)
+                                {
+                                    case 1:
+
+                                        numOnes--;
+                                        hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                        break;
+                                    case 2:
+                                        numTwos--;
+                                        hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                        break;
+                                    case 3:
+                                        numThrees--;
+                                        hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                        break;
+                                    case 4:
+                                        numFours--;
+                                        hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                        break;
+                                    case 5:
+                                        numFives--;
+                                        hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                        break;
+                                    case 6:
+                                        numSixes--;
+                                        hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                        break;
+                                    default:
+                                        hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                        numUnsetRollNum--;
+                                        break;
+                                }
+                            }
+
+                            // Check to modify the number of the hex types if it's been changed
+                            if (hexMap[i][j].hexType != hexMap[i][j].prevHexType)
+                            {
+                                switch (hexMap[i][j].hexType)
+                                {
+                                    case HexType.BRICK:
+                                        numBrick++;
+                                        break;
+                                    case HexType.GRAIN:
+                                        numWheat++;
+                                        break;
+                                    case HexType.WOOD:
+                                        numWood++;
+                                        break;
+                                    case HexType.WOOL:
+                                        numWool++;
+                                        break;
+                                }
+                                switch (hexMap[i][j].prevHexType)
+                                {
+                                    case HexType.BRICK:
+                                        numBrick--;
+                                        hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                        break;
+                                    case HexType.GRAIN:
+                                        numWheat--;
+                                        hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                        break;
+                                    case HexType.WOOD:
+                                        numWood--;
+                                        hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                        break;
+                                    case HexType.WOOL:
+                                        numWool--;
+                                        hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                        break;
+                                    default:
+                                        hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                        numUnsetType--;
+                                        break;
+
+                                }
+                            }
+                            #endregion
+                            
+                            if (hexMap[i][j].hexType != HexType.NONE)
+                            {
+                                TurnOnActive(i, j);
+                            }
+                            if (GUI.Button(labelPosition, labelText, style))
+                            {
+
+                                selectedRow = i;
+                                selectedColumn = j;
+
+                            }
+                        }
+                        else
+                        {
+                            EditorGUI.LabelField(labelPosition, string.Format("({0},{1})\n", i, j));
                         }
 
-                        // Draw last line from hex.hexCorner[5] to hex.hexCorners[0]
+                        ScriptHex hex = new ScriptHex(hexCenter, hexEdgeLength);
+
+                        #region draw the hex
+                        // Vertical lines
+
+                        if (hexMap[i][j].isActive)
+                        {
+                            switch (hexMap[i][j].hexType)
+                            {
+                                case HexType.BRICK:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.red, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.red, 1f, true);
+                                    break;
+                                case HexType.GRAIN:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.yellow, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.yellow, 1f, true);
+                                    break;
+                                case HexType.WOOD:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.green, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.green, 1f, true);
+                                    break;
+                                case HexType.WOOL:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.white, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.white, 1f, true);
+                                    break;
+                                default:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.blue, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.blue, 1f, true);
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.black, 1f, false);
+                            Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.black, 1f, false);
+                        }
+
+
+                        // Bottom of hex
+                        hex.hexCorners[0].x += 17f;
+                        hex.hexCorners[1].x += 17f;
+                        hex.hexCorners[2].x += 17f;
+                        if (hexMap[i][j].isActive)
+                        {
+                            switch (hexMap[i][j].hexType)
+                            {
+                                case HexType.BRICK:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.red, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.red, 1f, true);
+                                    break;
+                                case HexType.GRAIN:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.yellow, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.yellow, 1f, true);
+                                    break;
+                                case HexType.WOOD:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.green, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.green, 1f, true);
+                                    break;
+                                case HexType.WOOL:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.white, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.white, 1f, true);
+                                    break;
+                                default:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.blue, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.blue, 1f, true);
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.black, 1f, false);
+                            Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.black, 1f, false);
+                        }
+
+                        // Top of hex
+                        hex.hexCorners[3].x -= 17f;
+                        hex.hexCorners[4].x -= 17f;
+                        hex.hexCorners[5].x -= 17f;
+                        if (hexMap[i][j].isActive)
+                        {
+                            switch (hexMap[i][j].hexType)
+                            {
+                                case HexType.BRICK:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.red, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.red, 1f, true);
+                                    break;
+                                case HexType.GRAIN:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.yellow, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.yellow, 1f, true);
+                                    break;
+                                case HexType.WOOD:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.green, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.green, 1f, true);
+                                    break;
+                                case HexType.WOOL:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.white, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.white, 1f, true);
+                                    break;
+                                default:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.blue, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.blue, 1f, true);
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.black, 1f, false);
+                            Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.black, 1f, false);
+                        }
+
+                        #endregion
 
                         xOffset += hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f;
                     }
                     xOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (i + 8);
                     xOffset += (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (Mathf.Cos(Mathf.PI * (4f / 3f)));
-                    yOffset += (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * MAGIC_EDGE_DISTANCE_CONVERT;
+                    yOffset += (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * MAGIC_EDGE_DISTANCE_CONVERT - 1;
                     break;
                 case 7:
                 case 8:
@@ -93,3781 +413,612 @@ public class ScriptMapCreationWindow : EditorWindow
                 case 14:
                     for (int j = 0; j < 22 - i; j++)
                     {
-                        labelText = string.Format("{0},{1}", i, j);
-                        labelPosition = new Rect(xOffset, yOffset, 40f, 15f);
+                        labelText = string.Format("({0},{1})\n", i, j) + hexMap[i][j].hexType.ToString().ToLower() + "\n" + hexMap[i][j].hexNum;
+                        labelPosition = new Rect(xOffset, yOffset, 40f, 40f);
                         hexCenter.x = xOffset + 20f;
-                        hexCenter.y = yOffset + 8f;
-                        EditorGUI.LabelField(labelPosition, labelText);
-                        ScriptHex hex = new ScriptHex(hexCenter, hexEdgeLength);
+                        hexCenter.y = yOffset + 13f;
 
-                        for (int k = 0; k < 5; k++)
+                        #region data change check
+                        // Check to modify the number of each dice roll if it's been changed
+                        if (hexMap[i][j].oldHexNum != hexMap[i][j].hexNum)
                         {
-                            // Draw line from hex.hexCorners[k] to hex.hexCorners[k + 1]
+                            switch (hexMap[i][j].hexNum)
+                            {
+                                case 1:
+                                    numOnes++;
+                                    break;
+                                case 2:
+                                    numTwos++;
+                                    break;
+                                case 3:
+                                    numThrees++;
+                                    break;
+                                case 4:
+                                    numFours++;
+                                    break;
+                                case 5:
+                                    numFives++;
+                                    break;
+                                case 6:
+                                    numSixes++;
+                                    break;
+                            }
+                            switch (hexMap[i][j].oldHexNum)
+                            {
+                                case 1:
+
+                                    numOnes--;
+                                    hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                    break;
+                                case 2:
+                                    numTwos--;
+                                    hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                    break;
+                                case 3:
+                                    numThrees--;
+                                    hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                    break;
+                                case 4:
+                                    numFours--;
+                                    hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                    break;
+                                case 5:
+                                    numFives--;
+                                    hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                    break;
+                                case 6:
+                                    numSixes--;
+                                    hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                    break;
+                                default:
+                                    hexMap[i][j].oldHexNum = hexMap[i][j].hexNum;
+                                    numUnsetRollNum--;
+                                    break;
+                            }
                         }
 
-                        // Draw last line from hex.hexCorner[5] to hex.hexCorners[0]
+                        // Check to modify the number of the hex types if it's been changed
+                        if (hexMap[i][j].hexType != hexMap[i][j].prevHexType)
+                        {
+                            switch (hexMap[i][j].hexType)
+                            {
+                                case HexType.BRICK:
+                                    numBrick++;
+                                    break;
+                                case HexType.GRAIN:
+                                    numWheat++;
+                                    break;
+                                case HexType.WOOD:
+                                    numWood++;
+                                    break;
+                                case HexType.WOOL:
+                                    numWool++;
+                                    break;
+                            }
+                            switch (hexMap[i][j].prevHexType)
+                            {
+                                case HexType.BRICK:
+                                    numBrick--;
+                                    hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                    break;
+                                case HexType.GRAIN:
+                                    numWheat--;
+                                    hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                    break;
+                                case HexType.WOOD:
+                                    numWood--;
+                                    hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                    break;
+                                case HexType.WOOL:
+                                    numWool--;
+                                    hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                    break;
+                                default:
+                                    hexMap[i][j].prevHexType = hexMap[i][j].hexType;
+                                    numUnsetType--;
+                                    break;
+
+                            }
+                        }
+
+                        #endregion
+
+                        if (hexMap[i][j].isActive)
+                        {
+                            if (hexMap[i][j].hexType != HexType.NONE)
+                            {
+                                TurnOnActive(i, j);
+                            }
+                            if (GUI.Button(labelPosition, labelText, style))
+                            {
+
+                                selectedRow = i;
+                                selectedColumn = j;
+                            }
+                        }
+                        else
+                        {
+                            EditorGUI.LabelField(labelPosition, string.Format("({0},{1})\n", i, j));
+                        }
+
+                        ScriptHex hex = new ScriptHex(hexCenter, hexEdgeLength);
+
+                        #region draw the hex
+                        // Vertical lines
+
+                        if (hexMap[i][j].isActive)
+                        {
+                            switch (hexMap[i][j].hexType)
+                            {
+                                case HexType.BRICK:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.red, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.red, 1f, true);
+                                    break;
+                                case HexType.GRAIN:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.yellow, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.yellow, 1f, true);
+                                    break;
+                                case HexType.WOOD:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.green, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.green, 1f, true);
+                                    break;
+                                case HexType.WOOL:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.white, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.white, 1f, true);
+                                    break;
+                                default:
+                                    Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.blue, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.blue, 1f, true);
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            Drawing.DrawLine(hex.hexCorners[2], hex.hexCorners[3], Color.black, 1f, false);
+                            Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[5], Color.black, 1f, false);
+                        }
+
+
+                        // Bottom of hex
+                        hex.hexCorners[0].x += 17f;
+                        hex.hexCorners[1].x += 17f;
+                        hex.hexCorners[2].x += 17f;
+                        if (hexMap[i][j].isActive)
+                        {
+                            switch (hexMap[i][j].hexType)
+                            {
+                                case HexType.BRICK:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.red, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.red, 1f, true);
+                                    break;
+                                case HexType.GRAIN:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.yellow, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.yellow, 1f, true);
+                                    break;
+                                case HexType.WOOD:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.green, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.green, 1f, true);
+                                    break;
+                                case HexType.WOOL:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.white, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.white, 1f, true);
+                                    break;
+                                default:
+                                    Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.blue, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.blue, 1f, true);
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            Drawing.DrawLine(hex.hexCorners[0], hex.hexCorners[1], Color.black, 1f, false);
+                            Drawing.DrawLine(hex.hexCorners[1], hex.hexCorners[2], Color.black, 1f, false);
+                        }
+
+                        // Top of hex
+                        hex.hexCorners[3].x -= 17f;
+                        hex.hexCorners[4].x -= 17f;
+                        hex.hexCorners[5].x -= 17f;
+                        if (hexMap[i][j].isActive)
+                        {
+                            switch (hexMap[i][j].hexType)
+                            {
+                                case HexType.BRICK:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.red, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.red, 1f, true);
+                                    break;
+                                case HexType.GRAIN:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.yellow, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.yellow, 1f, true);
+                                    break;
+                                case HexType.WOOD:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.green, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.green, 1f, true);
+                                    break;
+                                case HexType.WOOL:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.white, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.white, 1f, true);
+                                    break;
+                                default:
+                                    Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.blue, 1f, true);
+                                    Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.blue, 1f, true);
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            Drawing.DrawLine(hex.hexCorners[3], hex.hexCorners[4], Color.black, 1f, false);
+                            Drawing.DrawLine(hex.hexCorners[4], hex.hexCorners[5], Color.black, 1f, false);
+                        }
+
+                        #endregion
 
                         xOffset += hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f;
                     }
                     xOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (22 - i);
                     xOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (Mathf.Cos(Mathf.PI * (4f / 3f)));
-                    yOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (Mathf.Sin(Mathf.PI * (4f / 3f)));
+                    yOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (Mathf.Sin(Mathf.PI * (4f / 3f))) + 1;
                     break;
             }
         }
 
-
-        EditorGUILayout.EndVertical();
-
         #endregion
 
-        #region Map Data
 
-        EditorGUILayout.BeginVertical("Box", GUILayout.Width(position.width * 0.29f));
+        #region Export Data Button
+        Rect exportDataButtonRect = new Rect((position.width / 2f) - 37f, position.height - 50f, 100f, 25f);
+        Color oldColor = GUI.color;
 
-        EditorGUILayout.LabelField("Hex Data", EditorStyles.boldLabel);
-
-        //mapDataScrollPos = EditorGUILayout.BeginScrollView(mapDataScrollPos, GUILayout.Width(100), GUILayout.Height(1000));
-        mapDataScrollPos = EditorGUILayout.BeginScrollView(mapDataScrollPos, false, true, GUILayout.Width(position.width * 0.29f), GUILayout.Height(position.height - 54));
-
-        for (int i = 0; i < numRows; i++)
+        GUI.color = Color.green;
+        if (GUI.Button(exportDataButtonRect, "Export Data"))
         {
-            switch (i)
+            Debug.Log("Exports the data!");
+        }
+
+        GUI.color = oldColor;
+
+        #endregion
+    }
+
+    void InitializeVariables()
+    {
+        hexMap[0] = new ScriptHex[8];
+        hexMap[1] = new ScriptHex[9];
+        hexMap[2] = new ScriptHex[10];
+        hexMap[3] = new ScriptHex[11];
+        hexMap[4] = new ScriptHex[12];
+        hexMap[5] = new ScriptHex[13];
+        hexMap[6] = new ScriptHex[14];
+        hexMap[7] = new ScriptHex[15];
+        hexMap[8] = new ScriptHex[14];
+        hexMap[9] = new ScriptHex[13];
+        hexMap[10] = new ScriptHex[12];
+        hexMap[11] = new ScriptHex[11];
+        hexMap[12] = new ScriptHex[10];
+        hexMap[13] = new ScriptHex[9];
+        hexMap[14] = new ScriptHex[8];
+       
+        for (int i = 0; i < hexMap.Length; i++)
+        {
+            
+            for (int j = 0; j < hexMap[i].Length; j++)
             {
-                // 8 across
-                #region row1
-                case 0:
-                    EditorGUILayout.LabelField("Row 0", EditorStyles.boldLabel);
-                    for (int j = 0; j < 8; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion          // 8 across
-
-                // 9 across
-                #region row2
-                case 1:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 1", EditorStyles.boldLabel);
-                    for (int j = 0; j < 9; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 10 across
-                #region row3
-                case 2:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 2", EditorStyles.boldLabel);
-                    for (int j = 0; j < 10; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 11 across
-                #region row4
-                case 3:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 3", EditorStyles.boldLabel);
-                    for (int j = 0; j < 11; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 12 across
-                #region row5
-                case 4:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 4", EditorStyles.boldLabel);
-                    for (int j = 0; j < 12; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 11:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 13 across
-                #region row6
-                case 5:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 5", EditorStyles.boldLabel);
-                    for (int j = 0; j < 13; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 11:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 12:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 14 across
-                #region row7
-                case 6:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 6", EditorStyles.boldLabel);
-                    for (int j = 0; j < 14; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 11:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 12:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 13:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 15 across
-                #region row8
-                case 7:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 7", EditorStyles.boldLabel);
-                    for (int j = 0; j < 15; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 11:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 12:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 13:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 14:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 14 across
-                #region row9
-                case 8:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 8", EditorStyles.boldLabel);
-                    for (int j = 0; j < 14; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 11:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 12:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 13:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 13 across
-                #region row10
-                case 9:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 9", EditorStyles.boldLabel);
-                    for (int j = 0; j < 13; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 11:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 12:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 12 across
-                #region row11
-                case 10:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 10", EditorStyles.boldLabel);
-                    for (int j = 0; j < 12; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 11:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 11 across
-                #region row12
-                case 11:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 11", EditorStyles.boldLabel);
-                    for (int j = 0; j < 11; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 10:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 10 across
-                #region row13
-                case 12:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 12", EditorStyles.boldLabel);
-                    for (int j = 0; j < 10; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 9:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 9 across
-                #region row14
-                case 13:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 13", EditorStyles.boldLabel);
-                    for (int j = 0; j < 9; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 8:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion
-
-                // 8 across
-                #region row15
-                case 14:
-                    EditorGUILayout.Space();
-                    EditorGUILayout.LabelField("Row 14", EditorStyles.boldLabel);
-                    for (int j = 0; j < 8; j++)
-                    {
-                        EditorGUILayout.BeginHorizontal();
-                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-                        switch (j)
-                        {
-                            case 0:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 1:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 2:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 3:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 4:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 5:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 6:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                            case 7:
-                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-                                    intPopup, GUILayout.Width(25f));
-                                curHex++;
-                                EditorGUILayout.EndHorizontal();
-                                break;
-                        }
-                    }
-                    break;
-                #endregion          // 8 across
+                hexMap[i][j] = new ScriptHex();
             }
         }
-        EditorGUILayout.EndScrollView();
 
-        EditorGUILayout.EndVertical();
-        #endregion
+        hexMap[7][7].isActive = true;
+        hexMap[7][7].hexType = HexType.WOOD;
+        hexMap[7][7].hexNum = 3;
+        TurnOnActive(7, 7);
 
-        EditorGUILayout.EndHorizontal();
+    }
+
+    void TurnOnActive(int startRow, int startColumn)
+    {
+        // Series of checks to make sure you don't active a hex that isn't there
+
+        // Check directly right
+        if (startColumn + 1 < hexMap[startRow].Length)
+        {
+            if (!hexMap[startRow][startColumn + 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow][startColumn + 1].isActive = true;
+            }
+        }
+
+        // Check directly left
+        if (startColumn - 1 >= 0)
+        {
+            if (!hexMap[startRow][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow][startColumn - 1].isActive = true;
+            }            
+        }
+
+        // First row of map
+        if (startRow == 0)
+        {
+            // Check down right
+            if (startColumn + 1 < hexMap[startRow + 1].Length && startRow + 1 < hexMap.Length)
+            {
+                if (!hexMap[startRow + 1][startColumn + 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow + 1][startColumn + 1].isActive = true;
+                }
+            }
+
+            // Check down left
+            if (startColumn >= 0 && startRow + 1 < hexMap.Length)
+            {
+                if (!hexMap[startRow + 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow + 1][startColumn].isActive = true;
+                }
+            }
+        }
+
+        // First column of top half
+        else if (startColumn == 0 && startRow < 7)
+        {
+            // Down left
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true;
+            }
+
+            // Down right
+            if (!hexMap[startRow + 1][startColumn + 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn + 1].isActive = true;
+            }
+
+            // Up right
+            if (!hexMap[startRow - 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn].isActive = true;
+            }
+        }
+
+        // Top half of map
+        else if (startRow < 7)
+        {
+            // Down right
+            if (!hexMap[startRow + 1][startColumn + 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn + 1].isActive = true;
+            }
+
+
+            // Down left
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true; ;
+            }
+            
+
+            // Check up left
+            if (startColumn >= 0 && startRow - 1 >= 0)
+            {
+                if (!hexMap[startRow - 1][startColumn - 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn - 1].isActive = true; ;
+                }
+            }
+
+            // Check up right
+            if (startColumn + 1 < hexMap[startRow - 1].Length && startRow > 0)
+            {
+                if (!hexMap[startRow - 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn].isActive = true; ;
+                }
+            }
+        }
+
+        // Special case for right most middle row
+        else if (startColumn == hexMap[startRow].Length - 1 && startRow == 7)
+        {
+
+            // Down left
+            if (!hexMap[startRow + 1][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn - 1].isActive = true; ;
+            }
+
+            // Up left
+            if (!hexMap[startRow - 1][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn - 1].isActive = true; ;
+            }
+
+        }
+
+        // Special case for left most middle row
+        else if (startColumn == 0 && startRow == 7)
+        {
+
+            // Up right
+            if (!hexMap[startRow - 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn].isActive = true; ;
+            }
+
+            // Down right
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true; ;
+            }
+
+        }
+
+        // Middle row of map
+        else if (startRow == 7)
+        {
+            // Down right
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true; ;
+            }
+
+            // Down left
+            if (!hexMap[startRow + 1][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn - 1].isActive = true; ;
+            }
+
+            // Up left
+            if (!hexMap[startRow - 1][startColumn - 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn - 1].isActive = true; ;
+            }
+
+            // Up right
+            if (!hexMap[startRow - 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn].isActive = true; ;
+            }
+        }
+
+        // Bottom row of map
+        else if (startRow == hexMap.Length - 1)
+        {
+            // Check up left
+            if (startColumn >= 0)
+            {
+                if (!hexMap[startRow - 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn].isActive = true; ;
+                }
+            }
+
+            // Check up right
+            if (startColumn + 1 < hexMap[startRow - 1].Length)
+            {
+                if (!hexMap[startRow - 1][startColumn + 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn + 1].isActive = true; ;
+                }
+            }
+        }
+
+        // First column of bottom half
+        else if (startColumn == 0 && startRow > 7)
+        {
+            // Up left
+            if (!hexMap[startRow - 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn].isActive = true; ;
+            }
+
+            // Up right
+            if (!hexMap[startRow - 1][startColumn + 1].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow - 1][startColumn + 1].isActive = true; ;
+            }
+
+            // Down right
+            if (!hexMap[startRow + 1][startColumn].isActive)
+            {
+                numUnsetRollNum++;
+                numUnsetType++;
+                hexMap[startRow + 1][startColumn].isActive = true; ;
+            }
+
+        }
+
+        // Bottom half of map
+        else if (startColumn <= hexMap[startRow].Length - 1 && startRow > 7)
+        {
+            // Check down right
+            if (startColumn < hexMap[startRow + 1].Length && startRow + 1 < hexMap.Length)
+            {
+                if (!hexMap[startRow + 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow + 1][startColumn].isActive = true; ;
+                }
+            }
+
+            // Check down left
+            if (startColumn - 1 >= 0 && startRow + 1 < hexMap.Length)
+            {
+                if (!hexMap[startRow + 1][startColumn - 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow + 1][startColumn - 1].isActive = true; ;
+                }
+            }
+
+            // Check up left
+            if (startColumn >= 0 && startRow - 1 >= 0)
+            {
+                if (!hexMap[startRow - 1][startColumn].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn].isActive = true; ;
+                }
+            }
+
+            // Check up right
+            if (startColumn + 1 < hexMap[startRow - 1].Length && startRow > 0)
+            {
+                if (!hexMap[startRow - 1][startColumn + 1].isActive)
+                {
+                    numUnsetRollNum++;
+                    numUnsetType++;
+                    hexMap[startRow - 1][startColumn + 1].isActive = true; ;
+                }
+            }
+        }
     }
 }
-
-
-//using System.Threading;
-//using UnityEngine;
-//using UnityEditor;
-
-//public class ScriptMapCreationWindow : EditorWindow
-//{
-
-//    private Vector2 mapDataScrollPos = Vector2.zero;
-//<<<<<<< HEAD
-//    private int numRows = 15;
-//    private int hexEdgeLength = 30;
-//    private Rect labelPosition;
-//    private float xOffset = 45f;
-//    private float yOffset = 200f;
-//    private string labelText;
-//    private Vector2 hexCenter;
-//    private Color oldColor;
-//    private ScriptHex selectedHex = new ScriptHex(Vector2.zero, 2);
-//    private int curHex = 0;
-//    private ScriptHex[] hexMap = new ScriptHex[169];
-//    string[] intPopupString = {"1", "2", "3", "4", "5", "6"};
-//    int[] intPopup = {1, 2, 3, 4, 5, 6};
-//=======
-//    private int numRows = 9;
-//    private Color oldColor;
-//    private ScriptHex selectedHex = new ScriptHex(Vector2.zero, 2);
-//    private int curHex = 0;
-//    private ScriptHex[] hexMap = new ScriptHex[35];
-//    string[] intPopupString = { "1", "2", "3", "4", "5", "6" };
-//    int[] intPopup = { 1, 2, 3, 4, 5, 6 };
-//>>>>>>> mdobson2/master
-//    private int numWool;
-//    private int numWood;
-//    private int numBrick;
-//    private int numWheat;
-//<<<<<<< HEAD
-//    private const float MAGIC_EDGE_DISTANCE_CONVERT = 0.86602540378f;   //Mathf.Sqrt(0.75f) & -Sin(Mathf.PI * 4 / 3) (apparently) Marshallllllll
-//=======
-//>>>>>>> mdobson2/master
-
-//    [MenuItem("Tools/Create New Map")]
-//    private static void Init()
-//    {
-//        // Get existing open window or if none, make a new one:
-//        ScriptMapCreationWindow window = (ScriptMapCreationWindow)EditorWindow.GetWindow(typeof(ScriptMapCreationWindow));
-//        window.position = new Rect(100, 50, 1250, 750);
-//        window.maxSize = new Vector2(1250, 750);
-//        window.minSize = window.maxSize;
-//        window.Show();
-//    }
-
-//    void OnGUI()
-//    {
-//        xOffset = 250f;
-//        yOffset = 45f;
-//        //Debug.Log("Comment out this line");
-//        EditorGUILayout.BeginHorizontal();
-
-//        // @author: MARSHALL AND HIS MATH GODLINESS, plus nathan
-//        #region Map
-//<<<<<<< HEAD
-//        EditorGUILayout.BeginVertical("box", GUILayout.Width(position.width * 0.70f), GUILayout.Height(position.height - 54));
-//=======
-//        EditorGUILayout.BeginVertical("Box", GUILayout.Width(position.width * 0.70f));
-//>>>>>>> mdobson2/master
-
-//        EditorGUILayout.LabelField("Map", EditorStyles.boldLabel);
-
-//        // yay marshall
-//        for (int i = 0; i < numRows; i++)
-//        {
-//            switch (i)
-//            {
-//                case 0:
-//                case 1:
-//                case 2:
-//                case 3:
-//                case 4:
-//                case 5:
-//                case 6:
-//                    for (int j = 0; j < 8 + i; j++)
-//                    {
-//                        labelText = string.Format("{0},{1}", i, j);
-//                        labelPosition = new Rect(xOffset, yOffset, 40f, 15f);
-//                        hexCenter.x = xOffset + 20f;
-//                        hexCenter.y = yOffset + 8f;
-//                        EditorGUI.LabelField(labelPosition, labelText);
-//                        ScriptHex hex = new ScriptHex(hexCenter, hexEdgeLength);
-
-//                        for (int k = 0; k < 5; k++)
-//                        {
-//                            // Draw line from hex.hexCorners[k] to hex.hexCorners[k + 1]
-//                        }
-
-//                        // Draw last line from hex.hexCorner[5] to hex.hexCorners[0]
-
-//                        xOffset += hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f;
-//                    }
-//                    xOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (i + 8);
-//                    xOffset += (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (Mathf.Cos(Mathf.PI * (4f / 3f)));
-//                    yOffset += (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * MAGIC_EDGE_DISTANCE_CONVERT;
-//                    break;
-//                case 7:
-//                case 8:
-//                case 9:
-//                case 10:
-//                case 11:
-//                case 12:
-//                case 13:
-//                case 14:
-//                    for (int j = 0; j < 22 - i; j++)
-//                    {
-//                        labelText = string.Format("{0},{1}", i, j);
-//                        labelPosition = new Rect(xOffset, yOffset, 40f, 15f);
-//                        hexCenter.x = xOffset + 20f;
-//                        hexCenter.y = yOffset + 8f;
-//                        EditorGUI.LabelField(labelPosition, labelText);
-//                        ScriptHex hex = new ScriptHex(hexCenter, hexEdgeLength);
-
-//                        for (int k = 0; k < 5; k++)
-//                        {
-//                            // Draw line from hex.hexCorners[k] to hex.hexCorners[k + 1]
-//                        }
-
-//                        // Draw last line from hex.hexCorner[5] to hex.hexCorners[0]
-
-//                        xOffset += hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f;
-//                    }
-//                    xOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (22 - i);
-//                    xOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (Mathf.Cos(Mathf.PI * (4f / 3f)));
-//                    yOffset -= (hexEdgeLength * MAGIC_EDGE_DISTANCE_CONVERT * 2f) * (Mathf.Sin(Mathf.PI * (4f / 3f)));
-//                    break;
-//            }
-//        }
-
-
-//        EditorGUILayout.EndVertical();
-
-//        #endregion
-
-//        #region Map Data
-
-//        EditorGUILayout.BeginVertical("Box", GUILayout.Width(position.width * 0.29f));
-
-//        EditorGUILayout.LabelField("Hex Data", EditorStyles.boldLabel);
-
-//        //mapDataScrollPos = EditorGUILayout.BeginScrollView(mapDataScrollPos, GUILayout.Width(100), GUILayout.Height(1000));
-//<<<<<<< HEAD
-//        mapDataScrollPos = EditorGUILayout.BeginScrollView(mapDataScrollPos, false, true, GUILayout.Width(position.width * 0.29f), GUILayout.Height(position.height - 54));
-//=======
-//        mapDataScrollPos = EditorGUILayout.BeginScrollView(mapDataScrollPos, false, true, GUILayout.Width(position.width * 0.28f), GUILayout.Height(position.height - 54));
-//>>>>>>> mdobson2/master
-
-//        for (int i = 0; i < numRows; i++)
-//        {
-//            switch (i)
-//            {
-//<<<<<<< HEAD
-//                // 8 across
-//                #region row1
-//                case 0:
-//                    EditorGUILayout.LabelField("Row 0", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 8; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//=======
-//                case 0:
-//                    for (int j = 0; j < 4; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex ({0},{1}):", i, j), GUILayout.Width(57f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                //selectedHex = hexMap[curHex];
-//>>>>>>> mdobson2/master
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//<<<<<<< HEAD
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//=======
-//                                break;
-//                            case 2:
-//                                break;
-//                            case 3:
-//>>>>>>> mdobson2/master
-//                                break;
-//                        }
-//                    }
-//                    break;
-//<<<<<<< HEAD
-//                #endregion          // 8 across
-
-//                // 9 across
-//                #region row2
-//                case 1:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 1", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 9; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 10 across
-//                #region row3
-//                case 2:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 2", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 10; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 11 across
-//                #region row4
-//                case 3:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 3", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 11; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 12 across
-//                #region row5
-//                case 4:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 4", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 12; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 11:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 13 across
-//                #region row6
-//                case 5:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 5", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 13; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 11:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 12:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 14 across
-//                #region row7
-//                case 6:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 6", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 14; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 11:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 12:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 13:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 15 across
-//                #region row8
-//                case 7:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 7", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 15; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 11:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 12:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 13:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 14:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 14 across
-//                #region row9
-//                case 8:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 8", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 14; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 11:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 12:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 13:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 13 across
-//                #region row10
-//                case 9:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 9", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 13; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 11:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 12:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 12 across
-//                #region row11
-//                case 10:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 10", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 12; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 11:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 11 across
-//                #region row12
-//                case 11:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 11", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 11; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 10:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 10 across
-//                #region row13
-//                case 12:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 12", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 10; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 9:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 9 across
-//                #region row14
-//                case 13:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 13", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 9; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 8:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                #endregion
-
-//                // 8 across
-//                #region row15
-//                case 14:
-//                    EditorGUILayout.Space();
-//                    EditorGUILayout.LabelField("Row 14", EditorStyles.boldLabel);
-//                    for (int j = 0; j < 8; j++)
-//                    {
-//                        EditorGUILayout.BeginHorizontal();
-//                        EditorGUILayout.LabelField(string.Format("Hex({0},{1}):", i, j), GUILayout.Width(68f));
-//                        switch (j)
-//                        {
-//                            case 0:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 1:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 2:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 3:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 4:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 5:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 6:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                            case 7:
-//                                EditorGUILayout.LabelField("Hex Type: ", GUILayout.Width(60f));
-//                                selectedHex.hexType = (HexType)EditorGUILayout.EnumPopup(selectedHex.hexType, GUILayout.Width(100f));
-//                                EditorGUILayout.LabelField("Roll Value: ", GUILayout.Width(60f));
-//                                selectedHex.hexNum = EditorGUILayout.IntPopup("", selectedHex.hexNum, intPopupString,
-//                                    intPopup, GUILayout.Width(25f));
-//                                curHex++;
-//                                EditorGUILayout.EndHorizontal();
-//                                break;
-//                        }
-//                    }
-//                    break;
-//                    #endregion          // 8 across
-//=======
-//                case 1:
-//                    break;
-//                case 2:
-//                    break;
-//                case 3:
-//                    break;
-//                case 4:
-//                    break;
-//                case 5:
-//                    break;
-//                case 6:
-//                    break;
-//                case 7:
-//                    break;
-//                case 8:
-//                    break;
-//                case 9:
-//                    break;
-//>>>>>>> mdobson2/master
-//            }
-//        }
-//        EditorGUILayout.EndScrollView();
-
-//        EditorGUILayout.EndVertical();
-//        #endregion
-
-//        EditorGUILayout.EndHorizontal();
-//    }
-//}
