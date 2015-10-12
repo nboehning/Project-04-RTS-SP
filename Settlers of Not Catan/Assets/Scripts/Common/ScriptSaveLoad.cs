@@ -19,6 +19,8 @@ public class ScriptSaveLoad : MonoBehaviour
         if (LoadGame)
         {
             Load();
+            LoadGame = false;
+            LoadLocation = null;
         }
     }
 
