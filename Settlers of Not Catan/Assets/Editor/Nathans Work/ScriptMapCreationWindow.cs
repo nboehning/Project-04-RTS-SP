@@ -24,8 +24,11 @@ public class ScriptMapCreationWindow : EditorWindow
     // Hex data variables
     string[] intPopupString = { "1", "2", "3", "4", "5", "6" };
     int[] intPopup = { 1, 2, 3, 4, 5, 6 };
+
+    private string[] hexTypeOptions = {"Wood", "Grain", "Wool", "Brick", "None"};
+    private int hexTypeIndex;
     
-    // Stuff for heuristics
+    // Variables for heuristics
     private int numUnsetType = 1;
     private int numUnsetRollNum = 1;
     private int numWool;
@@ -55,86 +58,6 @@ public class ScriptMapCreationWindow : EditorWindow
     {
         xOffset = 375f;
         yOffset = 50f;
-
-        #region Map Data
-
-        Rect hexDataRect = new Rect(100f, 100f, 175f, 15f);
-        EditorGUI.LabelField(hexDataRect, "Selected Hex Data", EditorStyles.boldLabel);
-
-        Rect hexCoordinateLabelRect = new Rect(100f, 117f, 40f, 15f);
-        EditorGUI.LabelField(hexCoordinateLabelRect, string.Format("({0},{1})", selectedRow, selectedColumn));
-
-        Rect rollValueLabelRect = new Rect(100f, 134f, 70f, 15f);
-        EditorGUI.LabelField(rollValueLabelRect, "Roll Value: ");
-
-        Rect rollDropDownRect = new Rect(174f, 134f, 25f, 17f);
-        hexMap[selectedRow][selectedColumn].hexNum = EditorGUI.IntPopup(rollDropDownRect, hexMap[selectedRow][selectedColumn].hexNum, intPopupString, intPopup);
-        
-        Rect hexTypeLabelRect = new Rect(100f, 151f, 60f, 15f);
-        EditorGUI.LabelField(hexTypeLabelRect, "Hex Type: ");
-
-        Rect hexTypeRect = new Rect(174f, 151f, 75f, 17f);
-        hexMap[selectedRow][selectedColumn].hexType = (HexType)EditorGUI.EnumPopup(hexTypeRect, hexMap[selectedRow][selectedColumn].hexType);
-
-        #endregion
-
-
-        #region Heuristic Display
-        float heuristicOffset = 750f;
-         
-        // Displays the heuristics to the designer
-        Rect heuristicLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(heuristicLabelRect, "Amount Placed", EditorStyles.boldLabel);
-        heuristicOffset += 17f;
-
-        Rect numBrickLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numBrickLabelRect, "Brick: " + numBrick);
-        heuristicOffset += 17f;
-
-        Rect numWheatLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numWheatLabelRect, "Grain: " + numWheat);
-        heuristicOffset += 17f;
-
-        Rect numWoodLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numWoodLabelRect, "Wood: " + numWood);
-        heuristicOffset += 17f;
-
-        Rect numWoolLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numWoolLabelRect, "Wool: " + numWool);
-        heuristicOffset += 17f;
-
-        Rect typeUnsetLabelRect = new Rect(100f, heuristicOffset, 150f, 15f);
-        EditorGUI.LabelField(typeUnsetLabelRect, "Hex Types Unset: " + numUnsetType, EditorStyles.boldLabel);
-        heuristicOffset += 17f;
-
-        Rect numOneLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numOneLabelRect, "1's: " + numOnes);
-        heuristicOffset += 17f;
-
-        Rect numTwoLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numTwoLabelRect, "2's: " + numTwos);
-        heuristicOffset += 17f;
-
-        Rect numThreeLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numThreeLabelRect, "3's: " + numThrees);
-        heuristicOffset += 17f;
-
-        Rect numFourLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numFourLabelRect, "4's: " + numFours);
-        heuristicOffset += 17f;
-
-        Rect numFiveLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numFiveLabelRect, "5's: " + numFives);
-        heuristicOffset += 17f;
-
-        Rect numSixLabelRect = new Rect(100f, heuristicOffset, 100f, 15f);
-        EditorGUI.LabelField(numSixLabelRect, "6's: " + numSixes);
-        heuristicOffset += 17f;
-
-        Rect rollUnsetLabelRect = new Rect(100f, heuristicOffset, 150f, 15f);
-        EditorGUI.LabelField(rollUnsetLabelRect, "Roll Values Unset: " + numUnsetRollNum, EditorStyles.boldLabel);
-
-        #endregion
 
         GUIStyle style = EditorStyles.label;
 
@@ -665,14 +588,111 @@ public class ScriptMapCreationWindow : EditorWindow
         #endregion
 
 
+
+        #region Map Data
+
+        Rect hexDataRect = new Rect(100f, 100f, 175f, 15f);
+        EditorGUI.LabelField(hexDataRect, "Selected Hex Data", EditorStyles.boldLabel);
+
+        Rect hexCoordinateLabelRect = new Rect(100f, 117f, 130f, 15f);
+        EditorGUI.LabelField(hexCoordinateLabelRect, string.Format("Hex Coordinate: ({0},{1})", selectedRow, selectedColumn));
+
+        Rect rollValueLabelRect = new Rect(100f, 134f, 65f, 15f);
+        EditorGUI.LabelField(rollValueLabelRect, "Roll Value: ");
+
+        Rect rollDropDownRect = new Rect(174f, 134f, 35f, 17f);
+        hexMap[selectedRow][selectedColumn].hexNum = EditorGUI.IntPopup(rollDropDownRect, hexMap[selectedRow][selectedColumn].hexNum, intPopupString, intPopup);
+
+        Rect hexTypeLabelRect = new Rect(100f, 151f, 60f, 15f);
+        EditorGUI.LabelField(hexTypeLabelRect, "Hex Type: ");
+
+        Rect hexTypeRect = new Rect(174f, 151f, 75f, 17f);
+        hexTypeIndex = EditorGUI.Popup(hexTypeRect, hexTypeIndex, hexTypeOptions);
+        switch (hexTypeIndex)
+        {
+            case 0:
+                hexMap[selectedRow][selectedColumn].hexType = HexType.WOOD;
+                break;
+            case 1:
+                hexMap[selectedRow][selectedColumn].hexType = HexType.GRAIN;
+                break;
+            case 2:
+                hexMap[selectedRow][selectedColumn].hexType = HexType.WOOL;
+                break;
+            case 3:
+                hexMap[selectedRow][selectedColumn].hexType = HexType.BRICK;
+                break;
+            case 4:
+                hexMap[selectedRow][selectedColumn].hexType = HexType.NONE;
+                break;
+        }
+        #endregion
+
+        #region Heuristic Display
+        float heuristicOffset = 50f;
+
+        // Displays the heuristics to the designer
+        Rect heuristicLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(heuristicLabelRect, "Amount Placed", EditorStyles.boldLabel);
+        heuristicOffset += 17f;
+
+        Rect numBrickLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numBrickLabelRect, "Brick: " + numBrick);
+        heuristicOffset += 17f;
+
+        Rect numWheatLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numWheatLabelRect, "Grain: " + numWheat);
+        heuristicOffset += 17f;
+
+        Rect numWoodLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numWoodLabelRect, "Wood: " + numWood);
+        heuristicOffset += 17f;
+
+        Rect numWoolLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numWoolLabelRect, "Wool: " + numWool);
+        heuristicOffset += 17f;
+
+        Rect typeUnsetLabelRect = new Rect(1075f, heuristicOffset, 150f, 15f);
+        EditorGUI.LabelField(typeUnsetLabelRect, "Hex Types Unset: " + numUnsetType, EditorStyles.boldLabel);
+        heuristicOffset += 17f;
+
+        Rect numOneLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numOneLabelRect, "1's: " + numOnes);
+        heuristicOffset += 17f;
+
+        Rect numTwoLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numTwoLabelRect, "2's: " + numTwos);
+        heuristicOffset += 17f;
+
+        Rect numThreeLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numThreeLabelRect, "3's: " + numThrees);
+        heuristicOffset += 17f;
+
+        Rect numFourLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numFourLabelRect, "4's: " + numFours);
+        heuristicOffset += 17f;
+
+        Rect numFiveLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numFiveLabelRect, "5's: " + numFives);
+        heuristicOffset += 17f;
+
+        Rect numSixLabelRect = new Rect(1075f, heuristicOffset, 100f, 15f);
+        EditorGUI.LabelField(numSixLabelRect, "6's: " + numSixes);
+        heuristicOffset += 17f;
+
+        Rect rollUnsetLabelRect = new Rect(1075f, heuristicOffset, 150f, 15f);
+        EditorGUI.LabelField(rollUnsetLabelRect, "Roll Values Unset: " + numUnsetRollNum, EditorStyles.boldLabel);
+
+        #endregion
+
         #region Export Data Button
         Rect exportDataButtonRect = new Rect((position.width / 2f) - 37f, position.height - 50f, 100f, 25f);
         Color oldColor = GUI.color;
 
         GUI.color = Color.green;
-        if (GUI.Button(exportDataButtonRect, "Export Data"))
+        if (GUI.Button(exportDataButtonRect, "Export Map"))
         {
-            Debug.Log("Exports the data!");
+            Debug.Log("Exports the map!");
         }
 
         GUI.color = oldColor;
