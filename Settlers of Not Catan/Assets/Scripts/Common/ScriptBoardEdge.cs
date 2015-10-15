@@ -51,5 +51,15 @@ public class ScriptBoardEdge : MonoBehaviour {
                 adjacentRoads.Add(other.gameObject.GetComponent<ScriptBoardEdge>());
             }
         }
+        colliderRadius = transform.lossyScale.y * 1.5f;
+        Vector3 colliderLocation = new Vector3(transform.position.x, transform.position.y, transform.position.z - .5f);
+        hitColliders = Physics.OverlapSphere(transform.position, colliderRadius);
+        for (int i = 0; i < hitColliders.Length; i++)
+        {
+            if (hitColliders[i].tag == "Settlement")
+            {
+                hitColliders[i].GetComponent<ScriptBoardCorner>().adjacentRoads.Add(this);
+            }
+        }
     }
 }
